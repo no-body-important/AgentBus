@@ -45,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,7 +75,7 @@ private const val PREFS_ONBOARDING_SEEN = "onboarding_seen"
 @Composable
 fun AgentBusApp() {
     val context = LocalContext.current
-    val prefs = rememberSaveable(context) { context.getSharedPreferences(APP_PREFS, Context.MODE_PRIVATE) }
+    val prefs = remember(context) { context.getSharedPreferences(APP_PREFS, Context.MODE_PRIVATE) }
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: HOME_ROUTE
