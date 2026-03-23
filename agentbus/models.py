@@ -94,6 +94,25 @@ class InboxFrontmatter(BaseModel):
     summary: str = ""
 
 
+class MemoryFrontmatter(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    memory_id: str
+    title: str
+    memory_type: str = "observation"
+    author_agent: str = ""
+    created_at: datetime
+    updated_at: datetime
+    source_type: str = "manual"
+    source_path: str = ""
+    source_trace_id: str = ""
+    importance: str = "normal"
+    tags: list[str] = Field(default_factory=list)
+    related_artifacts: list[str] = Field(default_factory=list)
+    summary: str = ""
+    body_hint: str = ""
+
+
 class Document(BaseModel):
     model_config = ConfigDict(extra="allow")
 

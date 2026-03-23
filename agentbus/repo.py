@@ -24,6 +24,15 @@ class AgentBusRepo:
     def archive_dir(self) -> Path:
         return self.bus_dir / "archive"
 
+    def memory_dir(self) -> Path:
+        return self.bus_dir / "memory"
+
+    def memory_notes_dir(self) -> Path:
+        return self.memory_dir() / "notes"
+
+    def memory_index_dir(self) -> Path:
+        return self.memory_dir() / "index"
+
     def template_dir(self) -> Path:
         return self.bus_dir / "templates"
 
@@ -44,3 +53,6 @@ class AgentBusRepo:
 
     def all_inbox_files(self) -> list[Path]:
         return sorted(self.bus_dir.glob("inbox/*/INBOX-*.md"))
+
+    def all_memory_files(self) -> list[Path]:
+        return sorted(self.bus_dir.glob("memory/notes/MEMORY-*.md"))

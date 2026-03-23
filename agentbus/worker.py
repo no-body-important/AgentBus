@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from agentbus.frontmatter import load_document, update_document_frontmatter, write_document
+from agentbus.frontmatter import load_document, load_result, update_document_frontmatter, write_document
+from agentbus.memory import capture_memory_from_result
 from agentbus.models import ResultFrontmatter, ResultStatus, TaskFrontmatter, TaskStatus
 from agentbus.repo import AgentBusRepo
 
@@ -59,6 +60,9 @@ def run_worker_once(config: WorkerConfig) -> WorkerRunResult:
         result_path = write_result(repo, config.agent, task_frontmatter, task_path, run_output, config.dry_run)
         result_paths.append(result_path)
         messages.append(run_output["summary"])
+
+        if not config.dry_run:
+            capture_memory_from_result(repo, load_result(result_path), result_path, task_path, dry_run=False)
 
         final_status = TaskStatus.completed if run_output["status"] == ResultStatus.completed else TaskStatus.blocked
         if not config.dry_run:

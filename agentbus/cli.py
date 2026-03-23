@@ -9,6 +9,15 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from agentbus.frontmatter import load_task
+from agentbus.memory import (
+    capture_memory_from_document,
+    build_memory_id,
+    now_utc,
+    render_search_results,
+    search_memory,
+    write_memory_entry,
+)
+from agentbus.models import MemoryFrontmatter
 from agentbus.repo import AgentBusRepo
 from agentbus.routing import RoutingReport, report_to_json, route_event, route_task, write_routing_ledger
 from agentbus.validator import validate_repo
@@ -71,6 +80,42 @@ def build_parser() -> argparse.ArgumentParser:
     worker_parser.add_argument("--once", action="store_true", help="process one cycle and exit")
     worker_parser.add_argument("--interval", type=int, default=30, help="seconds between cycles in loop mode")
     worker_parser.add_argument("--dry-run", action="store_true", help="simulate worker actions without writing files")
+
+    memory_parser = subparsers.add_parser("memory", help="write or search shared memory notes")
+    memory_subparsers = memory_parser.add_subparsers(dest="memory_command", required=True)
+
+    memory_add_parser = memory_subparsers.add_parser("add", help="add a new memory note")
+    memory_add_parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root containing agent_bus/")
+    memory_add_parser.add_argument("--title", required=True, help="memory note title")
+    memory_add_parser.add_argument("--summary", required=True, help="short summary for retrieval")
+    memory_add_parser.add_argument("--body", default="", help="full markdown body for the note")
+    memory_add_parser.add_argument("--author", default="codex", help="authoring agent handle")
+    memory_add_parser.add_argument("--type", default="observation", help="memory type such as observation or decision")
+    memory_add_parser.add_argument("--source-type", default="manual", help="source kind such as manual, task, or result")
+    memory_add_parser.add_argument("--source-path", default="", help="source path inside the repo")
+    memory_add_parser.add_argument("--trace-id", default="", help="trace identifier for the memory note")
+    memory_add_parser.add_argument("--importance", default="normal", help="importance classification")
+    memory_add_parser.add_argument("--tag", action="append", default=[], help="additional tags; repeat to add more")
+    memory_add_parser.add_argument("--artifact", action="append", default=[], help="related artifact paths; repeat to add more")
+    memory_add_parser.add_argument("--dry-run", action="store_true", help="print the note path without writing")
+
+    memory_capture_parser = memory_subparsers.add_parser("capture", help="capture memory from a task, result, or markdown file")
+    memory_capture_parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root containing agent_bus/")
+    memory_capture_parser.add_argument("--source-file", type=Path, required=True, help="file to capture from")
+    memory_capture_parser.add_argument(
+        "--source-kind",
+        choices=["task", "result", "document"],
+        default="document",
+        help="type of source file to capture",
+    )
+    memory_capture_parser.add_argument("--author", default="codex", help="authoring agent handle")
+    memory_capture_parser.add_argument("--dry-run", action="store_true", help="print the note path without writing")
+
+    memory_search_parser = memory_subparsers.add_parser("search", help="search shared memory notes")
+    memory_search_parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root containing agent_bus/")
+    memory_search_parser.add_argument("--query", required=True, help="search terms or a phrase")
+    memory_search_parser.add_argument("--limit", type=int, default=5, help="maximum results to return")
+    memory_search_parser.add_argument("--json", action="store_true", help="emit JSON output instead of text")
 
     return parser
 
@@ -152,6 +197,85 @@ def cmd_worker(root: Path, agent: str, handler_script: Path | None, once: bool, 
         time.sleep(max(5, interval))
 
 
+def cmd_memory_add(
+    root: Path,
+    title: str,
+    summary: str,
+    body: str,
+    author: str,
+    memory_type: str,
+    source_type: str,
+    source_path: str,
+    trace_id: str,
+    importance: str,
+    tags: list[str],
+    artifacts: list[str],
+    dry_run: bool,
+) -> int:
+    repo = AgentBusRepo(root=root)
+    created = now_utc()
+    note = MemoryFrontmatter(
+        memory_id=build_memory_id(author, title, created),
+        title=title,
+        memory_type=memory_type,
+        author_agent=author,
+        created_at=created,
+        updated_at=created,
+        source_type=source_type,
+        source_path=source_path,
+        source_trace_id=trace_id,
+        importance=importance,
+        tags=tags or [author, memory_type],
+        related_artifacts=artifacts,
+        summary=summary,
+        body_hint="manual",
+    )
+    path = write_memory_entry(repo, note, body or summary, dry_run=dry_run)
+    print(str(path))
+    return 0
+
+
+def cmd_memory_capture(
+    root: Path,
+    source_file: Path,
+    source_kind: str,
+    author: str,
+    dry_run: bool,
+) -> int:
+    repo = AgentBusRepo(root=root)
+    path = capture_memory_from_document(repo, source_file, source_kind, author, dry_run=dry_run)
+    print(str(path))
+    return 0
+
+
+def cmd_memory_search(root: Path, query: str, limit: int, json_output: bool) -> int:
+    repo = AgentBusRepo(root=root)
+    hits = search_memory(repo, query, limit=limit)
+    if json_output:
+        print(
+            json.dumps(
+                [
+                    {
+                        "path": str(hit.path.relative_to(repo.root)),
+                        "score": hit.score,
+                        "memory_id": hit.note.memory_id,
+                        "title": hit.note.title,
+                        "source_type": hit.note.source_type,
+                        "source_path": hit.note.source_path,
+                        "tags": hit.note.tags,
+                        "snippet": hit.snippet,
+                    }
+                    for hit in hits
+                ],
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        print(render_search_results(hits))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -162,6 +286,27 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_route(args.root, args.event_name, args.event_file, args.task, args.json, args.ledger_dir)
     if args.command == "worker":
         return cmd_worker(args.root, args.agent, args.handler_script, args.once, args.interval, args.dry_run)
+    if args.command == "memory":
+        if args.memory_command == "add":
+            return cmd_memory_add(
+                args.root,
+                args.title,
+                args.summary,
+                args.body,
+                args.author,
+                args.type,
+                args.source_type,
+                args.source_path,
+                args.trace_id,
+                args.importance,
+                args.tag,
+                args.artifact,
+                args.dry_run,
+            )
+        if args.memory_command == "capture":
+            return cmd_memory_capture(args.root, args.source_file, args.source_kind, args.author, args.dry_run)
+        if args.memory_command == "search":
+            return cmd_memory_search(args.root, args.query, args.limit, args.json)
 
     parser.error(f"unsupported command: {args.command}")
     return 2

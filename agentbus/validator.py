@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from agentbus.agents import load_agent_registry, normalize_handle
 from agentbus.frontmatter import load_inbox, load_result, load_task
+from agentbus.memory import load_memory
 from agentbus.repo import AgentBusRepo
 
 
@@ -33,6 +34,9 @@ def validate_repo(repo: AgentBusRepo) -> list[Issue]:
 
     for path in repo.all_inbox_files():
         issues.extend(validate_inbox_file(path, registry))
+
+    for path in repo.all_memory_files():
+        issues.extend(validate_memory_file(path))
 
     return issues
 
@@ -75,4 +79,16 @@ def validate_inbox_file(path: Path, registry=None) -> list[Issue]:
         return [Issue(path, str(exc))]
     if not path.name.startswith("INBOX-"):
         return [Issue(path, "inbox file name must start with INBOX-")]
+    return []
+
+
+def validate_memory_file(path: Path) -> list[Issue]:
+    try:
+        note = load_memory(path)
+    except (OSError, ValidationError, ValueError) as exc:
+        return [Issue(path, str(exc))]
+    if not path.name.startswith("MEMORY-"):
+        return [Issue(path, "memory file name must start with MEMORY-")]
+    if not note.memory_id:
+        return [Issue(path, "memory_id is required")]
     return []

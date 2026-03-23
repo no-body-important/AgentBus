@@ -11,6 +11,7 @@ It turns the file-driven handoff setup into an independent project with:
 - a CLI for validation, routing, and worker execution
 - CI to catch broken handoff files early
 - a native Android companion app scaffold in `android-app/`
+- a repo-native memory layer in `agent_bus/memory/`
 
 ## What lives where
 
@@ -21,6 +22,7 @@ It turns the file-driven handoff setup into an independent project with:
 - `agent_bus/config/` holds runtime registry data like supported agent handles
 - `agent_bus/tasks/android/` and friends can support a local Android/Termux worker
 - `agent_bus/templates/` contains the canonical file templates
+- `agent_bus/memory/` stores searchable memory notes derived from tasks/results/events
 - `agentbus/` contains the reusable Python tooling
 - `scripts/termux_handler.py` shows a minimal local worker handler
 - `android-app/` contains the Compose-based Android companion app scaffold
@@ -71,4 +73,5 @@ The current scaffold is intentionally small. The next useful additions are:
 - archive and promote commands
 - stricter schema checks for task/result frontmatter
 - a routing ledger for traceable handoffs
+- a memory layer for searchable, semantically useful notes
 - optional GitHub issue and PR bridging
