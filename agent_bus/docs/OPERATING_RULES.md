@@ -18,7 +18,7 @@ updated_at: "2026-03-22T00:00:00Z"
 - A task becomes active when its frontmatter has `status: ready`.
 - The assignee is determined by `to_agent`.
 - The task file itself is the trigger.
-- Inbox markers are optional and must never replace the task file.
+- Inbox markers and thread snapshots are optional and must never replace the task file.
 
 ## Codex protocol
 

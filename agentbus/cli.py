@@ -78,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="write durable inbox markers for routed issue and PR events",
     )
+    route_parser.add_argument(
+        "--emit-thread-markers",
+        action="store_true",
+        help="write durable thread snapshot files for routed issue and PR events",
+    )
 
     worker_parser = subparsers.add_parser("worker", help="run a local worker loop for one agent")
     worker_parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root containing agent_bus/")
@@ -158,6 +163,7 @@ def cmd_route(
     json_output: bool,
     ledger_dir: Path | None,
     emit_inbox_markers: bool,
+    emit_thread_markers: bool,
 ) -> int:
     repo = AgentBusRepo(root=root)
     try:
@@ -179,7 +185,13 @@ def cmd_route(
         if event_file is not None and event_file.exists():
             payload = json.loads(event_file.read_text(encoding="utf-8"))
 
-        report = route_event(repo, event_name=event_name, event_payload=payload, emit_inbox_markers=emit_inbox_markers)
+        report = route_event(
+            repo,
+            event_name=event_name,
+            event_payload=payload,
+            emit_inbox_markers=emit_inbox_markers,
+            emit_thread_markers=emit_thread_markers,
+        )
         if ledger_dir is not None:
             write_routing_ledger(report, ledger_dir, event_name)
         if json_output:
@@ -192,6 +204,10 @@ def cmd_route(
                     f"TARGET={decision.target_agent} MODE={decision.route_mode} "
                     f"ACTION={decision.action} SOURCE={decision.source_ref} TRACE={decision.trace_id}"
                 )
+            for marker in report.inbox_markers:
+                print(f"INBOX={marker.get('path', '')} TARGET={marker.get('target_agent', '')}")
+            for thread in report.thread_snapshots:
+                print(f"THREAD={thread.get('path', '')} TRACE={thread.get('trace_id', '')}")
             if report.comment_body:
                 print(report.comment_body)
         return 0
@@ -330,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
             args.json,
             args.ledger_dir,
             args.emit_inbox_markers,
+            args.emit_thread_markers,
         )
     if args.command == "worker":
         return cmd_worker(args.root, args.agent, args.handler_script, args.once, args.interval, args.dry_run)

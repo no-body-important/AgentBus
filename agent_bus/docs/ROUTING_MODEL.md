@@ -45,6 +45,7 @@ The router decides:
 
 - task files
 - inbox markers
+- thread snapshots
 - issue comments
 - pull request review comments
 - GitHub Action logs and artifacts
@@ -83,7 +84,7 @@ The GitHub Action should:
 2. detect the relevant task or comment
 3. classify the request as observe, review, or act
 4. emit a routing report
-5. optionally post the routing comment and publish durable inbox markers as the trigger surface
+5. optionally post the routing comment, publish durable inbox markers, and write a thread snapshot as the trigger surface
 
 ## Recommended upgrades
 

@@ -48,6 +48,7 @@ class RoutingReport:
     comment_body: str = ""
     context_notes: list[dict[str, Any]] = field(default_factory=list)
     inbox_markers: list[dict[str, Any]] = field(default_factory=list)
+    thread_snapshots: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -56,6 +57,7 @@ class RoutingReport:
             "comment_body": self.comment_body,
             "context_notes": self.context_notes,
             "inbox_markers": self.inbox_markers,
+            "thread_snapshots": self.thread_snapshots,
             "decisions": [asdict(decision) for decision in self.decisions],
         }
 
@@ -208,6 +210,7 @@ def route_event(
     event_name: str,
     event_payload: dict[str, Any] | None = None,
     emit_inbox_markers: bool = False,
+    emit_thread_markers: bool = False,
 ) -> RoutingReport:
     payload = event_payload or {}
     registry = load_agent_registry(repo.agents_config_path())
@@ -266,13 +269,30 @@ def route_event(
                         "trace_id": trace_id or decision.trace_id,
                     }
                 )
-        report = RoutingReport(
+        base_report = RoutingReport(
             event_name=event_name,
             decisions=decisions,
             context_notes=context_notes,
             inbox_markers=inbox_markers,
         )
-        return replace(report, comment_body=compose_comment(report, registry))
+        comment_body = compose_comment(base_report, registry)
+        thread_snapshots: list[dict[str, Any]] = []
+        if emit_thread_markers:
+            from agentbus.bridge import write_thread_snapshot
+
+            thread_path = write_thread_snapshot(
+                repo,
+                replace(base_report, comment_body=comment_body),
+                source_ref=source_ref or trace_id or event_name,
+            )
+            thread_snapshots.append(
+                {
+                    "path": str(thread_path.relative_to(repo.root)),
+                    "source_ref": source_ref or trace_id or event_name,
+                    "trace_id": trace_id,
+                }
+            )
+        return replace(base_report, comment_body=comment_body, thread_snapshots=thread_snapshots)
 
     if event_name == "push":
         for path in _extract_changed_paths(payload):

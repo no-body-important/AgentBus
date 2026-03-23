@@ -23,6 +23,7 @@ In practice, AgentBus is useful when you want an AI-friendly project hub that fe
 - `agent_bus/tasks/android/` and friends can support a local Android/Termux worker
 - `agent_bus/templates/` contains the canonical file templates
 - `agent_bus/memory/` stores searchable memory notes derived from tasks/results/events
+- `agent_bus/results/_routing/threads/` stores human-readable thread snapshots for routed comments and reviews
 - `agentbus/` contains the reusable Python tooling
 - `scripts/termux_handler.py` shows a minimal local worker handler
 - `android-app/` contains the Compose-based Android companion app scaffold
@@ -101,7 +102,7 @@ For tagged Android releases, set these repository secrets:
 AgentBus already includes the core collaboration path. The next useful additions are:
 
 - stricter schema checks for task/result/memory frontmatter edge cases
-- fuller GitHub issue and pull request bridging beyond routed comments and inbox markers
+- fuller GitHub issue and pull request bridging beyond routed comments, inbox markers, and thread snapshots
 - more release hardening for Android packaging and publishing
 - additional device QA and onboarding polish for first-time users
 
@@ -115,7 +116,7 @@ Already available today:
 - archive and promote commands for task/result lifecycle control
 - a routing ledger for traceable handoffs
 - a memory layer for searchable, semantically useful notes
-- routed GitHub comments plus durable inbox markers for supported agent handles
+- routed GitHub comments plus durable inbox markers and thread snapshots for supported agent handles
 
 In other words, the project already covers the main coordination loop, and the remaining work is mostly lifecycle polish, validation hardening, and release-quality finishing.
 

@@ -186,6 +186,35 @@ def test_route_event_writes_inbox_markers_for_issue_comments(tmp_path: Path) -> 
     assert inbox.source_ref == "issue#88"
 
 
+def test_route_event_writes_thread_snapshot_for_issue_comments(tmp_path: Path) -> None:
+    repo = AgentBusRepo(root=tmp_path)
+    payload = {
+        "comment": {"body": "@codex please review this"},
+        "issue": {"number": 89, "labels": [{"name": "needs-codex"}]},
+        "trace_id": "TRACE-THREAD-89",
+    }
+
+    report = route_event(
+        repo,
+        event_name="issue_comment",
+        event_payload=payload,
+        emit_inbox_markers=True,
+        emit_thread_markers=True,
+    )
+
+    assert report.thread_snapshots
+    thread = report.thread_snapshots[0]
+    assert thread["trace_id"] == "TRACE-THREAD-89"
+
+    thread_files = list((tmp_path / "agent_bus" / "results" / "_routing" / "threads").glob("THREAD-*.md"))
+    assert len(thread_files) == 1
+    thread_text = thread_files[0].read_text(encoding="utf-8")
+    assert "Bridge Thread Snapshot" in thread_text
+    assert "Routing Decisions" in thread_text
+    assert "Inbox Markers" in thread_text
+    assert "@codex" in thread_text
+
+
 def test_route_event_includes_memory_context(tmp_path: Path) -> None:
     repo = AgentBusRepo(root=tmp_path)
     task_path = tmp_path / "agent_bus" / "tasks" / "codex" / "TASK-20260322-050.md"

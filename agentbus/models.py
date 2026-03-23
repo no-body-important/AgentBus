@@ -95,6 +95,21 @@ class InboxFrontmatter(BaseModel):
     source_ref: str = ""
 
 
+class ThreadFrontmatter(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    thread_id: str
+    event_name: str
+    source_ref: str = ""
+    trace_id: str = ""
+    decision_count: int = 0
+    inbox_count: int = 0
+    published_at: datetime
+    summary: str = ""
+    target_agents: list[str] = Field(default_factory=list)
+    comment_path: str = ""
+
+
 class MemoryFrontmatter(BaseModel):
     model_config = ConfigDict(extra="allow")
 
