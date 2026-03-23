@@ -61,7 +61,7 @@ jobs:
             exit 0
           fi
           mkdir -p android-app/keystore
-          printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > android-app/keystore/release.jks
+          printf '%s' "$ANDROID_KEYSTORE_B64" | tr -d '\r\n[:space:]' | base64 -d > android-app/keystore/release.jks
           cat > android-app/signing.properties <<EOF
           storeFile=keystore/release.jks
           storePassword=$ANDROID_KEYSTORE_PASSWORD
