@@ -11,6 +11,10 @@ It gives you a simple way to keep tasks, results, routing, memory, and device wo
 - one native Android companion app in `android-app/`
 - one repo-backed history that stays auditable and easy to sync
 
+Latest public release:
+
+- [v0.1.0](https://github.com/no-body-important/AgentBus/releases/tag/v0.1.0) with the Python package artifacts and Android APK
+
 In practice, AgentBus is useful when you want an AI-friendly project hub that feels easy to pick up, easy to inspect, and easy to extend without introducing a heavy backend.
 
 ## What lives where
