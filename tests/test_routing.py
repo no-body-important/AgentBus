@@ -4,6 +4,7 @@ from agentbus.agents import AgentDefinition, AgentRegistry
 from agentbus.models import RouteMode, TaskFrontmatter, TaskStatus
 from agentbus.repo import AgentBusRepo
 from agentbus.routing import compose_comment, report_to_json, route_comment, route_event, route_task, write_routing_ledger
+from agentbus.worker import WorkerConfig, run_worker_once
 
 
 def test_route_task_uses_route_mode() -> None:
@@ -144,6 +145,21 @@ def test_compose_comment_includes_sentinel_and_mentions() -> None:
     assert "@codex" in body
 
 
+def test_route_event_routes_labels(tmp_path: Path) -> None:
+    repo = AgentBusRepo(root=tmp_path)
+    payload = {
+        "comment": {"body": "Please review"},
+        "issue": {
+            "number": 44,
+            "labels": [{"name": "needs-codex"}, {"name": "triage"}],
+        },
+    }
+
+    report = route_event(repo, event_name="issue_comment", event_payload=payload)
+
+    assert any(decision.target_agent == "codex" for decision in report.decisions)
+
+
 def test_write_routing_ledger_creates_json_file(tmp_path: Path) -> None:
     report = route_event(
         AgentBusRepo(root=Path(".")),
@@ -158,3 +174,56 @@ def test_write_routing_ledger_creates_json_file(tmp_path: Path) -> None:
 
     assert ledger_path.exists()
     assert ledger_path.name.startswith("ROUTING-")
+
+
+def test_worker_claims_and_completes_task(tmp_path: Path) -> None:
+    task_dir = tmp_path / "agent_bus" / "tasks" / "android"
+    task_dir.mkdir(parents=True)
+    task_path = task_dir / "TASK-20260322-003.md"
+    task_path.write_text(
+        """---
+task_id: TASK-20260322-003
+title: "Worker test"
+project: "AgentBus"
+from_agent: "codex"
+to_agent: "android"
+owner: "tester"
+created_at: "2026-03-22T00:00:00Z"
+updated_at: "2026-03-22T00:00:00Z"
+status: "ready"
+route_mode: "act"
+trace_id: "TRACE-20260322-003"
+priority: "P2"
+objective: "Confirm worker execution"
+success_criteria: []
+background: ""
+allowed_actions: []
+forbidden_actions: []
+dependencies: []
+depends_on_results: []
+required_output_format: "RESULT_TEMPLATE.md"
+related_artifacts: []
+superseded_by: ""
+notes: ""
+---
+
+## Request
+Test body.
+""",
+        encoding="utf-8",
+    )
+
+    handler = tmp_path / "handler.py"
+    handler.write_text(
+        "import sys\n"
+        "print('handled ' + sys.argv[1])\n",
+        encoding="utf-8",
+    )
+
+    result = run_worker_once(WorkerConfig(root=tmp_path, agent="android", handler_script=handler))
+
+    assert result.processed == 1
+    assert result.result_paths[0].exists()
+    assert "handled" in result.messages[0]
+    updated_task = task_path.read_text(encoding="utf-8")
+    assert "status: completed" in updated_task

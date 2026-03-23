@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import time
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -11,6 +12,7 @@ from agentbus.frontmatter import load_task
 from agentbus.repo import AgentBusRepo
 from agentbus.routing import RoutingReport, report_to_json, route_event, route_task, write_routing_ledger
 from agentbus.validator import validate_repo
+from agentbus.worker import WorkerConfig, run_worker_once
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -61,6 +63,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="optional directory where a routing ledger JSON file should be written",
     )
+
+    worker_parser = subparsers.add_parser("worker", help="run a local worker loop for one agent")
+    worker_parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root containing agent_bus/")
+    worker_parser.add_argument("--agent", required=True, help="agent handle to process, such as android or codex")
+    worker_parser.add_argument("--handler-script", type=Path, default=None, help="optional local script to execute per task")
+    worker_parser.add_argument("--once", action="store_true", help="process one cycle and exit")
+    worker_parser.add_argument("--interval", type=int, default=30, help="seconds between cycles in loop mode")
+    worker_parser.add_argument("--dry-run", action="store_true", help="simulate worker actions without writing files")
 
     return parser
 
@@ -126,6 +136,22 @@ def cmd_route(
         return 1
 
 
+def cmd_worker(root: Path, agent: str, handler_script: Path | None, once: bool, interval: int, dry_run: bool) -> int:
+    config = WorkerConfig(root=root, agent=agent, handler_script=handler_script, dry_run=dry_run)
+    while True:
+        result = run_worker_once(config)
+        print(
+            f"OK: processed={result.processed} agent={agent} "
+            f"tasks={len(result.task_paths)} results={len(result.result_paths)}"
+        )
+        for message in result.messages:
+            if message:
+                print(message)
+        if once:
+            return 0
+        time.sleep(max(5, interval))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -134,6 +160,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_validate(args.root)
     if args.command == "route":
         return cmd_route(args.root, args.event_name, args.event_file, args.task, args.json, args.ledger_dir)
+    if args.command == "worker":
+        return cmd_worker(args.root, args.agent, args.handler_script, args.once, args.interval, args.dry_run)
 
     parser.error(f"unsupported command: {args.command}")
     return 2

@@ -101,6 +101,16 @@ def default_registry() -> AgentRegistry:
                 can_act=False,
                 can_post_comments=True,
             ),
+            "android": AgentDefinition(
+                handle="android",
+                label="Android Termux",
+                aliases=["termux", "android-termux"],
+                default_route_mode=RouteMode.observe,
+                can_observe=True,
+                can_review=True,
+                can_act=True,
+                can_post_comments=False,
+            ),
         }
     )
 

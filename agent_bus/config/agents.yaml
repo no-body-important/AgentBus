@@ -19,3 +19,14 @@ agents:
     can_act: false
     can_post_comments: true
     notes: Secondary agent.
+  android:
+    label: Android Termux
+    aliases:
+      - termux
+      - android-termux
+    default_route_mode: observe
+    can_observe: true
+    can_review: true
+    can_act: true
+    can_post_comments: false
+    notes: Local Android worker via Termux.

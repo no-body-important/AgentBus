@@ -48,6 +48,8 @@ The router decides:
 - issue comments
 - pull request review comments
 - GitHub Action logs and artifacts
+- local worker loops, including Termux on Android
+- issue and pull request labels such as `needs-codex` or `needs-review`
 
 ## Agent registry
 

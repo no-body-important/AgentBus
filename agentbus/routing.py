@@ -116,6 +116,43 @@ def route_comment(
     return decisions
 
 
+def route_labels(
+    labels: list[str],
+    registry: AgentRegistry | None = None,
+    source_ref: str = "",
+    trace_id: str = "",
+    surface: RoutingSurface = RoutingSurface.issue_comment,
+    explicit_mode: RouteMode | None = None,
+    seen_handles: set[str] | None = None,
+) -> list[RoutingDecision]:
+    active_registry = registry or default_registry()
+    active_seen = seen_handles or set()
+    decisions: list[RoutingDecision] = []
+
+    for label in labels:
+        handle, mode = _parse_label(label, active_registry, explicit_mode)
+        if handle is None or handle in active_seen:
+            continue
+        active_seen.add(handle)
+        definition = active_registry.definition(handle)
+        if definition is None:
+            continue
+        chosen_mode = definition.supported_mode(mode or definition.default_route_mode)
+        decisions.append(
+            RoutingDecision(
+                target_agent=handle,
+                route_mode=chosen_mode.value,
+                action=_action_for_mode(chosen_mode).value,
+                surface=surface.value,
+                reason=f"label requested {handle} attention using {chosen_mode.value} mode",
+                source_ref=source_ref,
+                trace_id=trace_id,
+            )
+        )
+
+    return decisions
+
+
 def compose_comment(report: RoutingReport, registry: AgentRegistry | None = None) -> str:
     active_registry = registry or default_registry()
     visible_decisions = [
@@ -163,7 +200,20 @@ def route_event(
         source_ref = _extract_comment_ref(event_name, payload)
         trace_id = _extract_trace_id(payload)
         surface = RoutingSurface.issue_comment if event_name == "issue_comment" else RoutingSurface.pull_request_review
-        decisions.extend(route_comment(body, registry=registry, source_ref=source_ref, trace_id=trace_id, surface=surface))
+        explicit_mode = _extract_mode(body)
+        comment_decisions = route_comment(body, registry=registry, source_ref=source_ref, trace_id=trace_id, surface=surface)
+        decisions.extend(comment_decisions)
+        decisions.extend(
+            route_labels(
+                _extract_labels(payload),
+                registry=registry,
+                source_ref=source_ref,
+                trace_id=trace_id,
+                surface=surface,
+                explicit_mode=explicit_mode,
+                seen_handles={decision.target_agent for decision in comment_decisions},
+            )
+        )
         report = RoutingReport(event_name=event_name, decisions=decisions)
         return RoutingReport(event_name=event_name, decisions=decisions, comment_body=compose_comment(report, registry))
 
@@ -232,6 +282,51 @@ def _extract_comment_body(event_name: str, payload: dict[str, Any]) -> str:
     if event_name == "pull_request_review":
         return str(payload.get("review", {}).get("body", ""))
     return ""
+
+
+def _extract_labels(payload: dict[str, Any]) -> list[str]:
+    raw_labels: list[Any] = []
+    issue = payload.get("issue", {})
+    pull_request = payload.get("pull_request", {})
+    if isinstance(issue, dict):
+        raw_labels.extend(issue.get("labels", []) or [])
+    if isinstance(pull_request, dict):
+        raw_labels.extend(pull_request.get("labels", []) or [])
+
+    labels: list[str] = []
+    for entry in raw_labels:
+        if isinstance(entry, dict):
+            name = entry.get("name")
+            if name:
+                labels.append(str(name))
+        elif entry:
+            labels.append(str(entry))
+    return labels
+
+
+def _parse_label(label: str, registry: AgentRegistry, explicit_mode: RouteMode | None) -> tuple[str | None, RouteMode | None]:
+    normalized = label.strip().lower()
+    if not normalized:
+        return None, None
+
+    mode = explicit_mode
+    if "act" in normalized:
+        mode = RouteMode.act
+    elif "observe" in normalized:
+        mode = RouteMode.observe
+    elif "review" in normalized:
+        mode = RouteMode.review
+
+    for token in re.split(r"[-: ]+", normalized):
+        handle = registry.resolve(token)
+        if handle:
+            return handle, mode
+
+    handle = registry.resolve(normalized)
+    if handle:
+        return handle, mode
+
+    return None, None
 
 
 def _extract_comment_ref(event_name: str, payload: dict[str, Any]) -> str:

@@ -44,3 +44,17 @@ def load_inbox(path: str | Path) -> InboxFrontmatter:
 
 def dump_frontmatter_lines(frontmatter: dict[str, Any]) -> str:
     return yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=False).rstrip()
+
+
+def write_document(path: str | Path, frontmatter: dict[str, Any], body: str) -> None:
+    document_path = Path(path)
+    payload = "---\n"
+    payload += dump_frontmatter_lines(frontmatter)
+    payload += "\n---\n"
+    payload += body.lstrip("\n")
+    document_path.write_text(payload, encoding="utf-8")
+
+
+def update_document_frontmatter(path: str | Path, frontmatter: dict[str, Any]) -> None:
+    document = load_document(path)
+    write_document(path, frontmatter=frontmatter, body=document.body)
