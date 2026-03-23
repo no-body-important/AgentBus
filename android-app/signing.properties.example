@@ -1,0 +1,4 @@
+storeFile=keystore/agentbus-release.jks
+storePassword=change-me
+keyAlias=agentbus
+keyPassword=change-me

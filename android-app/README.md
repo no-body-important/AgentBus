@@ -13,7 +13,7 @@ It is intentionally lightweight:
 
 Open `android-app/` in Android Studio as a Gradle project.
 
-This scaffold is source-only at the moment. Android Studio can generate the missing local build wrapper files on import, and then you can build the APK from there.
+This scaffold now includes a Gradle wrapper, so you can build from the command line too.
 
 From there you can:
 
@@ -21,6 +21,19 @@ From there you can:
 - run it on an emulator or device
 - build a debug APK
 - later sign and release a production APK
+
+## Build commands
+
+From the repo root:
+
+- debug APK: `cd android-app && .\gradlew.bat assembleDebug`
+- release APK: `cd android-app && .\gradlew.bat assembleRelease`
+
+Release builds require a local `android-app/signing.properties` file and a keystore. Copy `signing.properties.example` first, then fill in the values.
+
+## One-command deploy
+
+Use `scripts/android_install.ps1` to build, install, and optionally launch the app on a connected device.
 
 ## What this app is for
 

@@ -24,6 +24,8 @@ It turns the file-driven handoff setup into an independent project with:
 - `agentbus/` contains the reusable Python tooling
 - `scripts/termux_handler.py` shows a minimal local worker handler
 - `android-app/` contains the Compose-based Android companion app scaffold
+- `android-app/signing.properties.example` is the template for release signing
+- `scripts/android_install.ps1` builds, installs, and can launch the Android app on a device
 
 ## Quick start
 
@@ -39,6 +41,8 @@ agentbus worker --agent android --once --handler-script scripts/termux_handler.p
 ```
 
 Open `android-app/` in Android Studio to build the graphical Android app and generate an APK.
+
+For a one-command local deploy, use `scripts/android_install.ps1`.
 
 ## Design goals
 

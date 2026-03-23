@@ -1,7 +1,21 @@
+import org.gradle.api.GradleException
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
+
+val signingPropertiesFile = rootProject.file("signing.properties")
+val releaseSigningProperties = Properties().apply {
+    if (signingPropertiesFile.exists()) {
+        FileInputStream(signingPropertiesFile).use { input ->
+            load(input)
+        }
+    }
+}
+val releaseSigningReady = signingPropertiesFile.exists()
 
 android {
     namespace = "com.agentbus.mobile"
@@ -18,6 +32,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseSigningReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -45,6 +62,36 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            if (releaseSigningReady) {
+                val storeFilePath = releaseSigningProperties.getProperty("storeFile")
+                    ?: throw GradleException("signing.properties is missing storeFile")
+                val storePasswordValue = releaseSigningProperties.getProperty("storePassword")
+                    ?: throw GradleException("signing.properties is missing storePassword")
+                val keyAliasValue = releaseSigningProperties.getProperty("keyAlias")
+                    ?: throw GradleException("signing.properties is missing keyAlias")
+                val keyPasswordValue = releaseSigningProperties.getProperty("keyPassword")
+                    ?: throw GradleException("signing.properties is missing keyPassword")
+
+                storeFile = rootProject.file(storeFilePath)
+                storePassword = storePasswordValue
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
+}
+
+if (!releaseSigningReady) {
+    tasks.matching { it.name.endsWith("Release") }.configureEach {
+        doFirst {
+            throw GradleException(
+                "Release signing is not configured. Copy android-app/signing.properties.example to android-app/signing.properties and point storeFile at your keystore.",
+            )
         }
     }
 }
