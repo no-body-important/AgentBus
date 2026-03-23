@@ -90,22 +90,30 @@ For tagged Android releases, set these repository secrets:
 - Make every handoff readable by humans and parsable by tools
 - Prefer explicit status transitions over hidden state
 - Keep the stack lightweight enough to use without a backend team
-- Make it easy to publish as an open-source GitHub repo
+- Support multiple agent types without hardcoding a fixed pair
+- Preserve a clear audit trail for routing, worker runs, and memory
+- Make the repo easy to clone, inspect, extend, and publish as open source
 
 ## Next capabilities
 
-The current scaffold is intentionally small. The next useful additions are:
+AgentBus already includes the core collaboration path. The next useful additions are:
+
+- archive and promote commands for more structured handoff lifecycle control
+- stricter schema checks for task/result/memory frontmatter edge cases
+- fuller GitHub issue and pull request bridging beyond routed comments
+- more release hardening for Android packaging and publishing
+- additional device QA and onboarding polish for first-time users
+
+Already available today:
 
 - routing decisions based on event type and route mode
 - configurable agent handles beyond the default Codex/OpenClaw pair
 - capability flags per agent for act/review/observe/comment delivery
 - label-based routing for issue and pull request metadata
 - local worker loops for desktop, Android, or Termux execution
-- archive and promote commands
-- stricter schema checks for task/result frontmatter
 - a routing ledger for traceable handoffs
 - a memory layer for searchable, semantically useful notes
-- optional GitHub issue and PR bridging
+- routed GitHub comments for supported agent handles
 
 ## License
 
