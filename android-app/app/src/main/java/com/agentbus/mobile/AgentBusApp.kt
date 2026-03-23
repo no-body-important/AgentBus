@@ -21,10 +21,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
@@ -50,7 +50,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -123,7 +122,7 @@ private data class BottomDestination(
 
 private val BottomDestinations = listOf(
     BottomDestination(HOME_ROUTE, "Home", Icons.Filled.Home),
-    BottomDestination(TUTORIAL_ROUTE, "Guide", Icons.Filled.MenuBook),
+    BottomDestination(TUTORIAL_ROUTE, "Guide", Icons.AutoMirrored.Filled.MenuBook),
     BottomDestination(AGENTS_ROUTE, "Agents", Icons.Filled.People),
     BottomDestination(WORKER_ROUTE, "Worker", Icons.Filled.Devices),
 )
