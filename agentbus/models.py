@@ -7,11 +7,6 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class AgentName(str, Enum):
-    codex = "codex"
-    openclaw = "openclaw"
-
-
 class RouteMode(str, Enum):
     observe = "observe"
     review = "review"
@@ -42,8 +37,8 @@ class TaskFrontmatter(BaseModel):
     task_id: str
     title: str
     project: str = "AgentBus"
-    from_agent: AgentName
-    to_agent: AgentName
+    from_agent: str
+    to_agent: str
     owner: str = ""
     created_at: datetime
     updated_at: datetime
@@ -69,7 +64,7 @@ class ResultFrontmatter(BaseModel):
 
     result_id: str
     task_id: str
-    reporting_agent: AgentName
+    reporting_agent: str
     completion_status: ResultStatus
     started_at: datetime
     finished_at: datetime
@@ -77,7 +72,7 @@ class ResultFrontmatter(BaseModel):
     trace_id: str = ""
     exact_actions_taken: list[str] = Field(default_factory=list)
     findings: list[str] = Field(default_factory=list)
-    recommended_next_owner: AgentName | str = "codex"
+    recommended_next_owner: str = "codex"
     recommended_next_action: str = ""
     related_artifacts: list[str] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
@@ -91,7 +86,7 @@ class InboxFrontmatter(BaseModel):
 
     inbox_id: str
     task_id: str
-    to_agent: AgentName
+    to_agent: str
     task_path: str
     published_at: datetime
     status: TaskStatus = TaskStatus.ready

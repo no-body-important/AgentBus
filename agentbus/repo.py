@@ -27,6 +27,12 @@ class AgentBusRepo:
     def template_dir(self) -> Path:
         return self.bus_dir / "templates"
 
+    def config_dir(self) -> Path:
+        return self.bus_dir / "config"
+
+    def agents_config_path(self) -> Path:
+        return self.config_dir() / "agents.yaml"
+
     def all_task_files(self) -> list[Path]:
         return sorted(self.bus_dir.glob("tasks/*/TASK-*.md"))
 

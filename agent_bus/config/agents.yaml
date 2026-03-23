@@ -1,0 +1,15 @@
+agents:
+  codex:
+    label: Codex
+    aliases:
+      - codex
+    default_route_mode: review
+    can_post_comments: true
+    notes: Primary agent.
+  openclaw:
+    label: OpenClaw
+    aliases:
+      - openclaw
+    default_route_mode: review
+    can_post_comments: true
+    notes: Secondary agent.

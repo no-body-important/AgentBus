@@ -8,7 +8,7 @@ updated_at: "2026-03-22T00:00:00Z"
 
 ## Goal
 
-AgentBus should route work by intent, not by guesswork.
+AgentBus should route work by intent, not by guesswork, and it should do so through a configurable agent registry.
 
 The router decides:
 
@@ -48,6 +48,20 @@ The router decides:
 - issue comments
 - pull request review comments
 - GitHub Action logs and artifacts
+
+## Agent registry
+
+Supported agent handles are defined in `agent_bus/config/agents.yaml`.
+
+That registry is what lets the bus expand beyond Codex and OpenClaw without rewriting the router.
+
+Each agent can define:
+
+- a canonical handle
+- a display label
+- aliases for mention detection
+- a default route mode
+- whether it should be included in routed comments
 
 ## Schema additions
 

@@ -81,6 +81,7 @@ def cmd_route(root: Path, event_name: str, event_file: Path | None, task: Path |
                 "event_name": "manual",
                 "decision_count": 1,
                 "decisions": [asdict(route_task(task_model, source_ref=str(task)))],
+                "comment_body": "",
             }
             if json_output:
                 print(json.dumps(report, indent=2, sort_keys=True))
@@ -91,7 +92,6 @@ def cmd_route(root: Path, event_name: str, event_file: Path | None, task: Path |
                 )
                 print(f"SOURCE={report['decisions'][0]['source_ref']} TRACE={report['decisions'][0]['trace_id']}")
             return 0
-
         payload: dict[str, object] = {}
         if event_file is not None and event_file.exists():
             payload = json.loads(event_file.read_text(encoding="utf-8"))
@@ -107,6 +107,8 @@ def cmd_route(root: Path, event_name: str, event_file: Path | None, task: Path |
                     f"TARGET={decision.target_agent} MODE={decision.route_mode} "
                     f"ACTION={decision.action} SOURCE={decision.source_ref} TRACE={decision.trace_id}"
                 )
+            if report.comment_body:
+                print(report.comment_body)
         return 0
     except (OSError, ValueError, ValidationError, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}")

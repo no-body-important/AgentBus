@@ -5,6 +5,7 @@ AgentBus is a standalone, repo-based handoff system for human + AI collaboration
 It turns the file-driven handoff setup into an independent project with:
 
 - a canonical `agent_bus/` state folder
+- a configurable `agent_bus/config/agents.yaml` registry for any number of agents
 - machine-readable task, result, and inbox formats
 - a small Python package for parsing and validation
 - a CLI for validation and inspection
@@ -16,6 +17,7 @@ It turns the file-driven handoff setup into an independent project with:
 - `agent_bus/results/<agent>/` holds completion records
 - `agent_bus/inbox/<agent>/` holds optional notifications
 - `agent_bus/archive/` holds closed handoff artifacts
+- `agent_bus/config/` holds runtime registry data like supported agent handles
 - `agent_bus/templates/` contains the canonical file templates
 - `agentbus/` contains the reusable Python tooling
 
@@ -38,6 +40,7 @@ agentbus validate
 The current scaffold is intentionally small. The next useful additions are:
 
 - routing decisions based on event type and route mode
+- configurable agent handles beyond the default Codex/OpenClaw pair
 - archive and promote commands
 - stricter schema checks for task/result frontmatter
 - a routing ledger for traceable handoffs

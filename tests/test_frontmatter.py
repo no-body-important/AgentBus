@@ -47,7 +47,7 @@ def test_load_task_parses_frontmatter(tmp_path: Path) -> None:
     task = load_task(task_path)
 
     assert task.task_id == "TASK-20260322-001"
-    assert task.to_agent.value == "openclaw"
+    assert task.to_agent == "openclaw"
     assert task.status.value == "ready"
 
 

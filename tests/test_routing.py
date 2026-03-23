@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from agentbus.models import AgentName, RouteMode, TaskFrontmatter, TaskStatus
+from agentbus.agents import AgentDefinition, AgentRegistry
+from agentbus.models import RouteMode, TaskFrontmatter, TaskStatus
 from agentbus.repo import AgentBusRepo
-from agentbus.routing import report_to_json, route_comment, route_event, route_task
+from agentbus.routing import compose_comment, report_to_json, route_comment, route_event, route_task
 
 
 def test_route_task_uses_route_mode() -> None:
@@ -10,8 +11,8 @@ def test_route_task_uses_route_mode() -> None:
         task_id="TASK-1",
         title="Test",
         project="AgentBus",
-        from_agent=AgentName.codex,
-        to_agent=AgentName.openclaw,
+        from_agent="codex",
+        to_agent="openclaw",
         owner="tester",
         created_at="2026-03-22T00:00:00Z",
         updated_at="2026-03-22T00:00:00Z",
@@ -34,6 +35,20 @@ def test_route_comment_detects_codex_request() -> None:
     assert decisions[0].target_agent == "codex"
     assert decisions[0].action == "review"
     assert decisions[0].trace_id == "TRACE-1"
+
+
+def test_route_comment_supports_custom_agent_registry() -> None:
+    registry = AgentRegistry(
+        agents={
+            "claude": AgentDefinition(handle="claude", label="Claude", aliases=["claude"], default_route_mode=RouteMode.act),
+            "grok": AgentDefinition(handle="grok", label="Grok", aliases=["grok"], default_route_mode=RouteMode.observe),
+        }
+    )
+
+    decisions = route_comment("@Claude and @grok take a look", registry=registry, source_ref="issue#22")
+
+    assert [decision.target_agent for decision in decisions] == ["claude", "grok"]
+    assert [decision.action for decision in decisions] == ["act", "observe"]
 
 
 def test_route_event_routes_changed_task_file(tmp_path: Path) -> None:
@@ -82,3 +97,19 @@ Test body.
     assert report.decisions[0].trace_id == "TRACE-20260322-002"
     assert report.decisions[0].action == "act"
     assert "TASK-20260322-002" in report_to_json(report)
+
+
+def test_compose_comment_includes_sentinel_and_mentions() -> None:
+    report = route_event(
+        AgentBusRepo(root=Path(".")),
+        event_name="issue_comment",
+        event_payload={
+            "comment": {"body": "@codex please review"},
+            "issue": {"number": 12},
+        },
+    )
+
+    body = compose_comment(report)
+
+    assert "<!-- agentbus-routed -->" in body
+    assert "@codex" in body
