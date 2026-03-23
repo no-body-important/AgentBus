@@ -48,6 +48,12 @@ fun RepoScreen() {
         mutableStateOf(prefs.getString(REPO_URI_PREF, "") ?: "")
     }
     var refreshNonce by remember { mutableIntStateOf(0) }
+    var memorySearchQuery by rememberSaveable { mutableStateOf("") }
+    var memoryTitle by rememberSaveable { mutableStateOf("") }
+    var memorySummary by rememberSaveable { mutableStateOf("") }
+    var memoryTags by rememberSaveable { mutableStateOf("android, manual") }
+    var memorySourcePath by rememberSaveable { mutableStateOf("android-app") }
+    var memoryStatus by rememberSaveable { mutableStateOf("") }
 
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -55,7 +61,7 @@ fun RepoScreen() {
         if (uri != null) {
             context.contentResolver.takePersistableUriPermission(
                 uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
             repoTreeUriString = uri.toString()
             prefs.edit().putString(REPO_URI_PREF, repoTreeUriString).apply()
@@ -118,6 +124,39 @@ fun RepoScreen() {
             title = "Memory context",
             subtitle = "Indexed memory notes and recent retrieval hints from the shared bus.",
             items = snapshot.memoryContext.ifEmpty { listOf("No memory index found yet") },
+        )
+        MemoryWorkspaceSection(
+            memoryEntries = snapshot.memoryEntries,
+            query = memorySearchQuery,
+            onQueryChange = { memorySearchQuery = it },
+            title = memoryTitle,
+            onTitleChange = { memoryTitle = it },
+            summary = memorySummary,
+            onSummaryChange = { memorySummary = it },
+            tags = memoryTags,
+            onTagsChange = { memoryTags = it },
+            sourcePath = memorySourcePath,
+            onSourcePathChange = { memorySourcePath = it },
+            statusMessage = memoryStatus,
+            canWrite = repoTreeUri != null,
+            onSave = {
+                if (repoTreeUri == null) {
+                    memoryStatus = "Pick a repo folder first."
+                } else {
+                    val result = writeMemoryNote(
+                        context = context,
+                        treeUri = repoTreeUri,
+                        title = memoryTitle,
+                        summary = memorySummary,
+                        tags = memoryTags,
+                        sourcePath = memorySourcePath,
+                    )
+                    memoryStatus = result
+                    if (result.startsWith("Saved")) {
+                        refreshNonce++
+                    }
+                }
+            },
         )
         SummarySection(
             title = "Live files",
@@ -200,6 +239,7 @@ private data class RepoSnapshot(
     val resultBuckets: List<String>,
     val inboxBuckets: List<String>,
     val memoryContext: List<String>,
+    val memoryEntries: List<MemoryIndexEntry>,
     val sampleFiles: List<String>,
 ) {
     companion object {
@@ -211,6 +251,7 @@ private data class RepoSnapshot(
             resultBuckets = emptyList(),
             inboxBuckets = emptyList(),
             memoryContext = emptyList(),
+            memoryEntries = emptyList(),
             sampleFiles = emptyList(),
         )
     }
@@ -229,6 +270,7 @@ private fun loadRepoSnapshot(context: Context, treeUri: Uri?): RepoSnapshot {
         resultBuckets = emptyList(),
         inboxBuckets = emptyList(),
         memoryContext = emptyList(),
+        memoryEntries = emptyList(),
         sampleFiles = emptyList(),
     )
 
@@ -263,6 +305,7 @@ private fun loadRepoSnapshot(context: Context, treeUri: Uri?): RepoSnapshot {
         resultBuckets = resultBuckets,
         inboxBuckets = inboxBuckets,
         memoryContext = memoryContext,
+        memoryEntries = memoryEntries,
         sampleFiles = liveFiles,
     )
 }
@@ -406,12 +449,3 @@ private fun countFiles(folder: DocumentFile): Int {
         if (child.isFile) 1 else countFiles(child)
     }
 }
-
-private data class MemoryIndexEntry(
-    val memoryId: String,
-    val title: String,
-    val sourceType: String,
-    val sourcePath: String,
-    val summary: String,
-    val tags: String,
-)

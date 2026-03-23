@@ -9,6 +9,7 @@ It is intentionally lightweight:
 - agent registry overview
 - live repository browser for a selected `agent_bus/` folder tree
 - indexed memory context from `agent_bus/memory/index/memory-index.json`
+- live memory note search and write-back
 - local worker guidance for desktop and Android/Termux flows
 
 ## Open and build
@@ -42,8 +43,8 @@ Use `scripts/android_install.ps1` to build, install, and optionally launch the a
 ## What this app is for
 
 - understanding the AgentBus protocol visually
-- reviewing agents, routes, and worker modes
 - reviewing agents, routes, worker modes, and memory context
+- searching and writing memory notes directly into the selected repo tree
 - giving you a guided mobile front end for the same repo-backed system
 
 ## What it is not

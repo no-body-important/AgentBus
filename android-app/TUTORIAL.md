@@ -32,6 +32,7 @@ The app is a visual companion that helps you inspect and understand that shared 
 - list agents and capabilities
 - open a live repo tree and read `agent_bus/` files directly
 - surface the indexed memory trail from `agent_bus/memory/index/memory-index.json`
+- search memory notes and save a new note back into the selected repo tree
 - show local worker guidance for desktop and Android/Termux
 - it can be expanded further to read live data from a sync service or a remote API
 
@@ -53,6 +54,7 @@ It can:
 - claim work
 - run a handler script
 - write results back to the repo
+- contribute memory notes that become part of the shared context layer
 
 That makes the Android device another local agent host rather than a separate silo.
 
