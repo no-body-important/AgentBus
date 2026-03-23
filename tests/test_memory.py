@@ -109,7 +109,59 @@ def test_capture_memory_from_result_and_search(tmp_path: Path) -> None:
 
 
 def test_worker_writes_memory_note(tmp_path: Path) -> None:
-    _write_task(tmp_path, agent="android")
+    task_path = _write_task(tmp_path, agent="android")
+
+    seeded_result_path = tmp_path / "agent_bus" / "results" / "codex" / "RESULT-20260322-099.md"
+    seeded_result_path.parent.mkdir(parents=True, exist_ok=True)
+    write_document(
+        seeded_result_path,
+        {
+            "result_id": "RESULT-20260322-099",
+            "task_id": "TASK-20260322-100",
+            "reporting_agent": "codex",
+            "completion_status": ResultStatus.completed.value,
+            "started_at": "2026-03-22T00:00:00Z",
+            "finished_at": "2026-03-22T00:01:00Z",
+            "summary": "Test memory capture for worker routing",
+            "trace_id": "TRACE-20260322-100",
+            "exact_actions_taken": ["seeded memory context"],
+            "findings": [],
+            "recommended_next_owner": "android",
+            "recommended_next_action": "Run the worker and attach memory context.",
+            "related_artifacts": [str(task_path.relative_to(tmp_path))],
+            "blockers": [],
+            "risks": [],
+            "confidence": "high",
+            "notes": "",
+        },
+        "## Human-readable Report\n\nSeeded memory.\n",
+    )
+    capture_memory_from_result(
+        AgentBusRepo(root=tmp_path),
+        ResultFrontmatter.model_validate(
+            {
+                "result_id": "RESULT-20260322-099",
+                "task_id": "TASK-20260322-100",
+                "reporting_agent": "codex",
+                "completion_status": "completed",
+                "started_at": "2026-03-22T00:00:00Z",
+                "finished_at": "2026-03-22T00:01:00Z",
+                "summary": "Test memory capture for worker routing",
+                "trace_id": "TRACE-20260322-100",
+                "exact_actions_taken": ["seeded memory context"],
+                "findings": [],
+                "recommended_next_owner": "android",
+                "recommended_next_action": "Run the worker and attach memory context.",
+                "related_artifacts": [str(task_path.relative_to(tmp_path))],
+                "blockers": [],
+                "risks": [],
+                "confidence": "high",
+                "notes": "",
+            }
+        ),
+        seeded_result_path,
+        task_path,
+    )
 
     handler = tmp_path / "handler.py"
     handler.write_text("print('worker handled')\n", encoding="utf-8")
@@ -119,5 +171,9 @@ def test_worker_writes_memory_note(tmp_path: Path) -> None:
     assert result.processed == 1
     memory_files = list((tmp_path / "agent_bus" / "memory" / "notes").glob("MEMORY-*.md"))
     assert memory_files
+    result_files = list((tmp_path / "agent_bus" / "results" / "android").glob("RESULT-*.md"))
+    assert result_files
+    result_text = result_files[0].read_text(encoding="utf-8")
+    assert "## Relevant Memory" in result_text
     hits = search_memory(AgentBusRepo(root=tmp_path), "worker handled", limit=5)
     assert hits

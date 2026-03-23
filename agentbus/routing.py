@@ -8,6 +8,7 @@ from typing import Any
 
 from agentbus.agents import AgentRegistry, default_registry, load_agent_registry, normalize_handle
 from agentbus.frontmatter import load_task
+from agentbus.memory import build_memory_query_from_task, build_memory_query_from_text, search_memory
 from agentbus.models import RouteMode, TaskFrontmatter, TaskStatus
 from agentbus.repo import AgentBusRepo
 
@@ -44,12 +45,14 @@ class RoutingReport:
     event_name: str
     decisions: list[RoutingDecision] = field(default_factory=list)
     comment_body: str = ""
+    context_notes: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "event_name": self.event_name,
             "decision_count": len(self.decisions),
             "comment_body": self.comment_body,
+            "context_notes": self.context_notes,
             "decisions": [asdict(decision) for decision in self.decisions],
         }
 
@@ -66,7 +69,7 @@ def _action_for_mode(mode: RouteMode) -> RoutingAction:
     return RoutingAction.act
 
 
-def route_task(task: TaskFrontmatter, source_ref: str = "") -> RoutingDecision:
+def route_task(task: TaskFrontmatter, source_ref: str = "", repo: AgentBusRepo | None = None) -> RoutingDecision:
     mode = task.route_mode
     return RoutingDecision(
         target_agent=normalize_handle(task.to_agent),
@@ -183,6 +186,17 @@ def compose_comment(report: RoutingReport, registry: AgentRegistry | None = None
         if decision.reason:
             lines.append(f"  - {decision.reason}")
 
+    if report.context_notes:
+        lines.extend(["", "Relevant memory context:"])
+        for note in report.context_notes[:5]:
+            title = note.get("title", "Untitled")
+            memory_id = note.get("memory_id", "")
+            source_path = note.get("source_path", "")
+            summary = note.get("summary", "")
+            lines.append(f"- {title} [{memory_id}] ({source_path})")
+            if summary:
+                lines.append(f"  - {summary}")
+
     return "\n".join(lines).strip()
 
 
@@ -194,6 +208,7 @@ def route_event(
     payload = event_payload or {}
     registry = load_agent_registry(repo.agents_config_path())
     decisions: list[RoutingDecision] = []
+    context_notes: list[dict[str, Any]] = []
 
     if event_name in {"issue_comment", "pull_request_review"}:
         body = _extract_comment_body(event_name, payload)
@@ -214,8 +229,21 @@ def route_event(
                 seen_handles={decision.target_agent for decision in comment_decisions},
             )
         )
-        report = RoutingReport(event_name=event_name, decisions=decisions)
-        return RoutingReport(event_name=event_name, decisions=decisions, comment_body=compose_comment(report, registry))
+        context_hits = search_memory(repo, build_memory_query_from_text(body, source_ref=source_ref, trace_id=trace_id), limit=3)
+        context_notes = [
+            {
+                "memory_id": hit.note.memory_id,
+                "title": hit.note.title,
+                "source_type": hit.note.source_type,
+                "source_path": hit.note.source_path,
+                "summary": hit.note.summary,
+                "score": hit.score,
+                "tags": hit.note.tags,
+            }
+            for hit in context_hits
+        ]
+        report = RoutingReport(event_name=event_name, decisions=decisions, context_notes=context_notes)
+        return RoutingReport(event_name=event_name, decisions=decisions, comment_body=compose_comment(report, registry), context_notes=context_notes)
 
     if event_name == "push":
         for path in _extract_changed_paths(payload):
@@ -225,22 +253,61 @@ def route_event(
             if not task_path.exists():
                 continue
             task = load_task(task_path)
-            decisions.append(route_task(task, source_ref=path))
-        return RoutingReport(event_name=event_name, decisions=decisions)
+            decisions.append(route_task(task, source_ref=path, repo=repo))
+            context_hits = search_memory(repo, build_memory_query_from_task(task), limit=2)
+            for hit in context_hits:
+                context_notes.append(
+                    {
+                        "memory_id": hit.note.memory_id,
+                        "title": hit.note.title,
+                        "source_type": hit.note.source_type,
+                        "source_path": hit.note.source_path,
+                        "summary": hit.note.summary,
+                        "score": hit.score,
+                        "tags": hit.note.tags,
+                    }
+                )
+        return RoutingReport(event_name=event_name, decisions=decisions, context_notes=context_notes)
 
     if event_name == "workflow_dispatch":
         for task_path in repo.all_task_files():
             task = load_task(task_path)
             if task.status == TaskStatus.ready:
-                decisions.append(route_task(task, source_ref=str(task_path.relative_to(repo.root))))
-        return RoutingReport(event_name=event_name, decisions=decisions)
+                decisions.append(route_task(task, source_ref=str(task_path.relative_to(repo.root)), repo=repo))
+                context_hits = search_memory(repo, build_memory_query_from_task(task), limit=2)
+                for hit in context_hits:
+                    context_notes.append(
+                        {
+                            "memory_id": hit.note.memory_id,
+                            "title": hit.note.title,
+                            "source_type": hit.note.source_type,
+                            "source_path": hit.note.source_path,
+                            "summary": hit.note.summary,
+                            "score": hit.score,
+                            "tags": hit.note.tags,
+                        }
+                    )
+        return RoutingReport(event_name=event_name, decisions=decisions, context_notes=context_notes)
 
     for task_path in repo.all_task_files():
         task = load_task(task_path)
         if task.status == TaskStatus.ready:
-            decisions.append(route_task(task, source_ref=str(task_path.relative_to(repo.root))))
+            decisions.append(route_task(task, source_ref=str(task_path.relative_to(repo.root)), repo=repo))
+            context_hits = search_memory(repo, build_memory_query_from_task(task), limit=2)
+            for hit in context_hits:
+                context_notes.append(
+                    {
+                        "memory_id": hit.note.memory_id,
+                        "title": hit.note.title,
+                        "source_type": hit.note.source_type,
+                        "source_path": hit.note.source_path,
+                        "summary": hit.note.summary,
+                        "score": hit.score,
+                        "tags": hit.note.tags,
+                    }
+                )
 
-    return RoutingReport(event_name=event_name, decisions=decisions)
+    return RoutingReport(event_name=event_name, decisions=decisions, context_notes=context_notes)
 
 
 def report_to_json(report: RoutingReport) -> str:

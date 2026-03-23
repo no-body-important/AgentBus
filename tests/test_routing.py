@@ -1,7 +1,10 @@
 from pathlib import Path
 
 from agentbus.agents import AgentDefinition, AgentRegistry
+from agentbus.frontmatter import write_document
+from agentbus.memory import capture_memory_from_result
 from agentbus.models import RouteMode, TaskFrontmatter, TaskStatus
+from agentbus.models import ResultFrontmatter, ResultStatus
 from agentbus.repo import AgentBusRepo
 from agentbus.routing import compose_comment, report_to_json, route_comment, route_event, route_task, write_routing_ledger
 from agentbus.worker import WorkerConfig, run_worker_once
@@ -158,6 +161,107 @@ def test_route_event_routes_labels(tmp_path: Path) -> None:
     report = route_event(repo, event_name="issue_comment", event_payload=payload)
 
     assert any(decision.target_agent == "codex" for decision in report.decisions)
+
+
+def test_route_event_includes_memory_context(tmp_path: Path) -> None:
+    repo = AgentBusRepo(root=tmp_path)
+    task_path = tmp_path / "agent_bus" / "tasks" / "codex" / "TASK-20260322-050.md"
+    task_path.parent.mkdir(parents=True, exist_ok=True)
+    write_document(
+        task_path,
+        {
+            "task_id": "TASK-20260322-050",
+            "title": "Memory routing test",
+            "project": "AgentBus",
+            "from_agent": "codex",
+            "to_agent": "codex",
+            "owner": "tester",
+            "created_at": "2026-03-22T00:00:00Z",
+            "updated_at": "2026-03-22T00:00:00Z",
+            "status": "completed",
+            "route_mode": "act",
+            "trace_id": "TRACE-ROUTE-050",
+            "priority": "P2",
+            "objective": "Seed memory for routing",
+            "success_criteria": [],
+            "background": "",
+            "allowed_actions": [],
+            "forbidden_actions": [],
+            "dependencies": [],
+            "depends_on_results": [],
+            "required_output_format": "RESULT_TEMPLATE.md",
+            "related_artifacts": [],
+            "superseded_by": "",
+            "notes": "",
+        },
+        "## Request\nSeed the memory layer.\n",
+    )
+    result_path = tmp_path / "agent_bus" / "results" / "codex" / "RESULT-20260322-050.md"
+    result_path.parent.mkdir(parents=True, exist_ok=True)
+    write_document(
+        result_path,
+        {
+            "result_id": "RESULT-20260322-050",
+            "task_id": "TASK-20260322-050",
+            "reporting_agent": "codex",
+            "completion_status": ResultStatus.completed.value,
+            "started_at": "2026-03-22T00:00:00Z",
+            "finished_at": "2026-03-22T00:01:00Z",
+            "summary": "Captured routing ledger memory",
+            "trace_id": "TRACE-ROUTE-050",
+            "exact_actions_taken": ["seeded memory"],
+            "findings": [],
+            "recommended_next_owner": "codex",
+            "recommended_next_action": "Review routing context",
+            "related_artifacts": [str(task_path.relative_to(tmp_path))],
+            "blockers": [],
+            "risks": [],
+            "confidence": "high",
+            "notes": "",
+        },
+        "## Human-readable Report\n\nSeed memory.\n",
+    )
+    capture_memory_from_result(
+        repo,
+        ResultFrontmatter.model_validate(
+            {
+                "result_id": "RESULT-20260322-050",
+                "task_id": "TASK-20260322-050",
+                "reporting_agent": "codex",
+                "completion_status": "completed",
+                "started_at": "2026-03-22T00:00:00Z",
+                "finished_at": "2026-03-22T00:01:00Z",
+                "summary": "Captured routing ledger memory",
+                "trace_id": "TRACE-ROUTE-050",
+                "exact_actions_taken": ["seeded memory"],
+                "findings": [],
+                "recommended_next_owner": "codex",
+                "recommended_next_action": "Review routing context",
+                "related_artifacts": [str(task_path.relative_to(tmp_path))],
+                "blockers": [],
+                "risks": [],
+                "confidence": "high",
+                "notes": "",
+            }
+        ),
+        result_path,
+        task_path,
+    )
+
+    report = route_event(
+        repo,
+        event_name="issue_comment",
+        event_payload={
+            "comment": {"body": "@codex please review the routing ledger memory"},
+            "issue": {"number": 50},
+            "trace_id": "TRACE-ROUTE-050",
+        },
+    )
+
+    assert report.context_notes
+    assert report.context_notes[0]["source_type"] == "result"
+    assert report.context_notes[0]["summary"] == "Captured routing ledger memory"
+    assert "Relevant memory context" in report.comment_body
 
 
 def test_write_routing_ledger_creates_json_file(tmp_path: Path) -> None:

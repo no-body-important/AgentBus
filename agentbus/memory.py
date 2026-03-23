@@ -231,6 +231,25 @@ def capture_memory_from_document(
     return write_memory_entry(repo, note, body, dry_run=dry_run)
 
 
+def build_memory_query_from_task(task: TaskFrontmatter) -> str:
+    parts = [
+        task.task_id,
+        task.title,
+        task.objective,
+        task.from_agent,
+        task.to_agent,
+        task.trace_id,
+        " ".join(task.success_criteria),
+        " ".join(task.related_artifacts),
+    ]
+    return " ".join(part for part in parts if part)
+
+
+def build_memory_query_from_text(text: str, source_ref: str = "", trace_id: str = "") -> str:
+    parts = [text, source_ref, trace_id]
+    return " ".join(part for part in parts if part)
+
+
 def search_memory(repo: AgentBusRepo, query: str, limit: int = 5) -> list[MemoryHit]:
     query_tokens = tokenize(query)
     hits: list[MemoryHit] = []
@@ -263,6 +282,20 @@ def render_search_results(hits: list[MemoryHit]) -> str:
             lines.append(f"  tags: {', '.join(hit.note.tags)}")
         if hit.snippet:
             lines.append(f"  {hit.snippet}")
+    return "\n".join(lines)
+
+
+def format_memory_context(hits: list[MemoryHit]) -> str:
+    if not hits:
+        return ""
+
+    lines = ["Relevant memory:"]
+    for hit in hits:
+        lines.append(
+            f"- {hit.note.title} [{hit.note.memory_id}] ({hit.note.source_type}: {hit.note.source_path})"
+        )
+        if hit.note.summary:
+            lines.append(f"  - {hit.note.summary}")
     return "\n".join(lines)
 
 
