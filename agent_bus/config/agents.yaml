@@ -4,6 +4,9 @@ agents:
     aliases:
       - codex
     default_route_mode: review
+    can_observe: true
+    can_review: true
+    can_act: true
     can_post_comments: true
     notes: Primary agent.
   openclaw:
@@ -11,5 +14,8 @@ agents:
     aliases:
       - openclaw
     default_route_mode: review
+    can_observe: true
+    can_review: true
+    can_act: false
     can_post_comments: true
     notes: Secondary agent.

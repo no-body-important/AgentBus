@@ -3,7 +3,7 @@ from pathlib import Path
 from agentbus.agents import AgentDefinition, AgentRegistry
 from agentbus.models import RouteMode, TaskFrontmatter, TaskStatus
 from agentbus.repo import AgentBusRepo
-from agentbus.routing import compose_comment, report_to_json, route_comment, route_event, route_task
+from agentbus.routing import compose_comment, report_to_json, route_comment, route_event, route_task, write_routing_ledger
 
 
 def test_route_task_uses_route_mode() -> None:
@@ -40,7 +40,15 @@ def test_route_comment_detects_codex_request() -> None:
 def test_route_comment_supports_custom_agent_registry() -> None:
     registry = AgentRegistry(
         agents={
-            "claude": AgentDefinition(handle="claude", label="Claude", aliases=["claude"], default_route_mode=RouteMode.act),
+            "claude": AgentDefinition(
+                handle="claude",
+                label="Claude",
+                aliases=["claude"],
+                default_route_mode=RouteMode.act,
+                can_observe=True,
+                can_review=True,
+                can_act=True,
+            ),
             "grok": AgentDefinition(handle="grok", label="Grok", aliases=["grok"], default_route_mode=RouteMode.observe),
         }
     )
@@ -49,6 +57,27 @@ def test_route_comment_supports_custom_agent_registry() -> None:
 
     assert [decision.target_agent for decision in decisions] == ["claude", "grok"]
     assert [decision.action for decision in decisions] == ["act", "observe"]
+
+
+def test_route_comment_respects_capability_flags() -> None:
+    registry = AgentRegistry(
+        agents={
+            "openclaw": AgentDefinition(
+                handle="openclaw",
+                label="OpenClaw",
+                aliases=["openclaw"],
+                default_route_mode=RouteMode.act,
+                can_observe=True,
+                can_review=True,
+                can_act=False,
+            )
+        }
+    )
+
+    decisions = route_comment("@openclaw build this", registry=registry, source_ref="issue#7")
+
+    assert decisions[0].route_mode == "review"
+    assert decisions[0].action == "review"
 
 
 def test_route_event_routes_changed_task_file(tmp_path: Path) -> None:
@@ -113,3 +142,19 @@ def test_compose_comment_includes_sentinel_and_mentions() -> None:
 
     assert "<!-- agentbus-routed -->" in body
     assert "@codex" in body
+
+
+def test_write_routing_ledger_creates_json_file(tmp_path: Path) -> None:
+    report = route_event(
+        AgentBusRepo(root=Path(".")),
+        event_name="issue_comment",
+        event_payload={
+            "comment": {"body": "@codex please review"},
+            "issue": {"number": 12},
+        },
+    )
+
+    ledger_path = write_routing_ledger(report, tmp_path, "issue_comment")
+
+    assert ledger_path.exists()
+    assert ledger_path.name.startswith("ROUTING-")

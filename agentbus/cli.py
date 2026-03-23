@@ -3,14 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from dataclasses import asdict
 from pathlib import Path
 
 from pydantic import ValidationError
 
 from agentbus.frontmatter import load_task
 from agentbus.repo import AgentBusRepo
-from agentbus.routing import report_to_json, route_event, route_task
+from agentbus.routing import RoutingReport, report_to_json, route_event, route_task, write_routing_ledger
 from agentbus.validator import validate_repo
 
 
@@ -56,6 +55,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="emit JSON output instead of human-readable text",
     )
+    route_parser.add_argument(
+        "--ledger-dir",
+        type=Path,
+        default=None,
+        help="optional directory where a routing ledger JSON file should be written",
+    )
 
     return parser
 
@@ -72,31 +77,37 @@ def cmd_validate(root: Path) -> int:
     return 0
 
 
-def cmd_route(root: Path, event_name: str, event_file: Path | None, task: Path | None, json_output: bool) -> int:
+def cmd_route(
+    root: Path,
+    event_name: str,
+    event_file: Path | None,
+    task: Path | None,
+    json_output: bool,
+    ledger_dir: Path | None,
+) -> int:
     repo = AgentBusRepo(root=root)
     try:
         if task is not None:
             task_model = load_task(task)
-            report = {
-                "event_name": "manual",
-                "decision_count": 1,
-                "decisions": [asdict(route_task(task_model, source_ref=str(task)))],
-                "comment_body": "",
-            }
+            report = RoutingReport(event_name="manual", decisions=[route_task(task_model, source_ref=str(task))])
+            if ledger_dir is not None:
+                write_routing_ledger(report, ledger_dir, "manual")
             if json_output:
-                print(json.dumps(report, indent=2, sort_keys=True))
+                print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
             else:
+                decision = report.decisions[0]
                 print(
-                    f"TARGET={report['decisions'][0]['target_agent']} MODE={report['decisions'][0]['route_mode']} "
-                    f"ACTION={report['decisions'][0]['action']}"
+                    f"TARGET={decision.target_agent} MODE={decision.route_mode} ACTION={decision.action}"
                 )
-                print(f"SOURCE={report['decisions'][0]['source_ref']} TRACE={report['decisions'][0]['trace_id']}")
+                print(f"SOURCE={decision.source_ref} TRACE={decision.trace_id}")
             return 0
         payload: dict[str, object] = {}
         if event_file is not None and event_file.exists():
             payload = json.loads(event_file.read_text(encoding="utf-8"))
 
         report = route_event(repo, event_name=event_name, event_payload=payload)
+        if ledger_dir is not None:
+            write_routing_ledger(report, ledger_dir, event_name)
         if json_output:
             print(report_to_json(report))
         else:
@@ -122,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "validate":
         return cmd_validate(args.root)
     if args.command == "route":
-        return cmd_route(args.root, args.event_name, args.event_file, args.task, args.json)
+        return cmd_route(args.root, args.event_name, args.event_file, args.task, args.json, args.ledger_dir)
 
     parser.error(f"unsupported command: {args.command}")
     return 2

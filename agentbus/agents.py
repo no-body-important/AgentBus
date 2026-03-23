@@ -17,8 +17,31 @@ class AgentDefinition(BaseModel):
     label: str = ""
     aliases: list[str] = Field(default_factory=list)
     default_route_mode: RouteMode = RouteMode.review
+    can_observe: bool = True
+    can_review: bool = True
+    can_act: bool = False
     can_post_comments: bool = True
     notes: str = ""
+
+    def supports_mode(self, mode: RouteMode) -> bool:
+        if mode == RouteMode.observe:
+            return self.can_observe
+        if mode == RouteMode.review:
+            return self.can_review
+        return self.can_act
+
+    def supported_mode(self, preferred: RouteMode) -> RouteMode:
+        if self.supports_mode(preferred):
+            return preferred
+        if preferred == RouteMode.act and self.can_review:
+            return RouteMode.review
+        if self.can_observe:
+            return RouteMode.observe
+        if self.can_review:
+            return RouteMode.review
+        if self.can_act:
+            return RouteMode.act
+        return preferred
 
 
 class AgentRegistry(BaseModel):
@@ -63,12 +86,20 @@ def default_registry() -> AgentRegistry:
                 label="Codex",
                 aliases=["codex"],
                 default_route_mode=RouteMode.review,
+                can_observe=True,
+                can_review=True,
+                can_act=True,
+                can_post_comments=True,
             ),
             "openclaw": AgentDefinition(
                 handle="openclaw",
                 label="OpenClaw",
                 aliases=["openclaw"],
                 default_route_mode=RouteMode.review,
+                can_observe=True,
+                can_review=True,
+                can_act=False,
+                can_post_comments=True,
             ),
         }
     )
@@ -97,4 +128,3 @@ def load_agent_registry(path: str | Path | None) -> AgentRegistry:
         agents[normalize_handle(handle)] = AgentDefinition.model_validate(data)
 
     return AgentRegistry(agents=agents) if agents else default_registry()
-

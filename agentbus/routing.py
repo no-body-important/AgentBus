@@ -99,7 +99,8 @@ def route_comment(
 
         seen_handles.add(handle)
         definition = active_registry.definition(handle)
-        mode = explicit_mode or (definition.default_route_mode if definition else RouteMode.review)
+        preferred_mode = explicit_mode or (definition.default_route_mode if definition else RouteMode.review)
+        mode = definition.supported_mode(preferred_mode) if definition else preferred_mode
         decisions.append(
             RoutingDecision(
                 target_agent=handle,
@@ -117,7 +118,12 @@ def route_comment(
 
 def compose_comment(report: RoutingReport, registry: AgentRegistry | None = None) -> str:
     active_registry = registry or default_registry()
-    if not report.decisions:
+    visible_decisions = [
+        decision
+        for decision in report.decisions
+        if _can_post_comment(active_registry, decision.target_agent)
+    ]
+    if not visible_decisions:
         return ""
 
     lines = [
@@ -127,7 +133,7 @@ def compose_comment(report: RoutingReport, registry: AgentRegistry | None = None
         f"Event: `{report.event_name}`",
     ]
 
-    for decision in report.decisions:
+    for decision in visible_decisions:
         definition = active_registry.definition(decision.target_agent)
         label = definition.label if definition and definition.label else decision.target_agent
         mention = f"@{decision.target_agent}"
@@ -189,6 +195,28 @@ def route_event(
 
 def report_to_json(report: RoutingReport) -> str:
     return json.dumps(report.to_dict(), indent=2, sort_keys=True)
+
+
+def _can_post_comment(registry: AgentRegistry, handle: str) -> bool:
+    definition = registry.definition(handle)
+    if definition is None:
+        definition = default_registry().definition(handle)
+    return bool(definition and definition.can_post_comments)
+
+
+def build_routing_ledger_path(ledger_dir: Path, event_name: str) -> Path:
+    from datetime import datetime, timezone
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    safe_event = re.sub(r"[^a-zA-Z0-9_-]+", "-", event_name).strip("-").lower() or "event"
+    return ledger_dir / f"ROUTING-{timestamp}-{safe_event}.json"
+
+
+def write_routing_ledger(report: RoutingReport, ledger_dir: Path, event_name: str) -> Path:
+    ledger_dir.mkdir(parents=True, exist_ok=True)
+    ledger_path = build_routing_ledger_path(ledger_dir, event_name)
+    ledger_path.write_text(report_to_json(report), encoding="utf-8")
+    return ledger_path
 
 
 def _extract_mode(comment_body: str) -> RouteMode | None:

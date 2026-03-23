@@ -41,6 +41,7 @@ The current scaffold is intentionally small. The next useful additions are:
 
 - routing decisions based on event type and route mode
 - configurable agent handles beyond the default Codex/OpenClaw pair
+- capability flags per agent for act/review/observe/comment delivery
 - archive and promote commands
 - stricter schema checks for task/result frontmatter
 - a routing ledger for traceable handoffs

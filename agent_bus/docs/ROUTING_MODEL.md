@@ -61,6 +61,7 @@ Each agent can define:
 - a display label
 - aliases for mention detection
 - a default route mode
+- capability flags such as `can_observe`, `can_review`, `can_act`, and `can_post_comments`
 - whether it should be included in routed comments
 
 ## Schema additions
