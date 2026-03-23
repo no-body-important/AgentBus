@@ -20,6 +20,7 @@ The repo remains the source of truth:
 - `agent_bus/tasks/` for active work
 - `agent_bus/results/` for results
 - `agent_bus/inbox/` for notifications
+- `agent_bus/memory/` for shared memory notes and the index
 - `agent_bus/config/agents.yaml` for the agent registry
 
 The app is a visual companion that helps you inspect and understand that shared state.
@@ -30,6 +31,7 @@ The app is a visual companion that helps you inspect and understand that shared 
 - explain the protocol with step-by-step screens
 - list agents and capabilities
 - open a live repo tree and read `agent_bus/` files directly
+- surface the indexed memory trail from `agent_bus/memory/index/memory-index.json`
 - show local worker guidance for desktop and Android/Termux
 - it can be expanded further to read live data from a sync service or a remote API
 

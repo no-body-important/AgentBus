@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
+import org.json.JSONArray
+import org.json.JSONObject
 
 private const val REPO_PREFS = "agentbus_mobile_repo"
 private const val REPO_URI_PREF = "repo_tree_uri"
@@ -111,6 +113,11 @@ fun RepoScreen() {
             title = "Inbox buckets",
             subtitle = "Optional notification folders inside the repo.",
             items = snapshot.inboxBuckets.ifEmpty { listOf("No inbox folders found yet") },
+        )
+        SummarySection(
+            title = "Memory context",
+            subtitle = "Indexed memory notes and recent retrieval hints from the shared bus.",
+            items = snapshot.memoryContext.ifEmpty { listOf("No memory index found yet") },
         )
         SummarySection(
             title = "Live files",
@@ -192,6 +199,7 @@ private data class RepoSnapshot(
     val taskBuckets: List<String>,
     val resultBuckets: List<String>,
     val inboxBuckets: List<String>,
+    val memoryContext: List<String>,
     val sampleFiles: List<String>,
 ) {
     companion object {
@@ -202,6 +210,7 @@ private data class RepoSnapshot(
             taskBuckets = emptyList(),
             resultBuckets = emptyList(),
             inboxBuckets = emptyList(),
+            memoryContext = emptyList(),
             sampleFiles = emptyList(),
         )
     }
@@ -219,6 +228,7 @@ private fun loadRepoSnapshot(context: Context, treeUri: Uri?): RepoSnapshot {
         taskBuckets = emptyList(),
         resultBuckets = emptyList(),
         inboxBuckets = emptyList(),
+        memoryContext = emptyList(),
         sampleFiles = emptyList(),
     )
 
@@ -227,14 +237,18 @@ private fun loadRepoSnapshot(context: Context, treeUri: Uri?): RepoSnapshot {
     val tasksFolder = findDescendantFolder(repoRoot, "tasks")
     val resultsFolder = findDescendantFolder(repoRoot, "results")
     val inboxFolder = findDescendantFolder(repoRoot, "inbox")
+    val memoryFolder = findDescendantFolder(repoRoot, "memory")
     val configFolder = findDescendantFolder(repoRoot, "config")
     val agentsFile = configFolder?.let { findDescendantFile(it, "agents.yaml") }
+    val memoryIndexFile = memoryFolder?.let { findDescendantFolder(it, "index") }?.let { findDescendantFile(it, "memory-index.json") }
     val registryText = agentsFile?.let { readText(context, it) }.orEmpty()
+    val memoryEntries = memoryIndexFile?.let { readMemoryIndex(context, it) }.orEmpty()
 
     val inferredHandles = parseAgentHandles(registryText)
     val taskBuckets = summarizeBuckets(tasksFolder, "task")
     val resultBuckets = summarizeBuckets(resultsFolder, "result")
     val inboxBuckets = summarizeBuckets(inboxFolder, "inbox")
+    val memoryContext = summarizeMemory(memoryEntries, memoryFolder)
     val liveFiles = sampleFiles(tasksFolder, resultsFolder, inboxFolder, agentsFile)
 
     return RepoSnapshot(
@@ -248,6 +262,7 @@ private fun loadRepoSnapshot(context: Context, treeUri: Uri?): RepoSnapshot {
         taskBuckets = taskBuckets,
         resultBuckets = resultBuckets,
         inboxBuckets = inboxBuckets,
+        memoryContext = memoryContext,
         sampleFiles = liveFiles,
     )
 }
@@ -336,9 +351,67 @@ private fun sampleFiles(
     return samples.distinct()
 }
 
+private fun summarizeMemory(entries: List<MemoryIndexEntry>, memoryFolder: DocumentFile?): List<String> {
+    if (entries.isNotEmpty()) {
+        val lines = mutableListOf<String>()
+        lines += "${entries.size} indexed memory note${if (entries.size == 1) "" else "s"}"
+        entries.take(4).forEach { entry ->
+            val summary = entry.summary.takeIf { it.isNotBlank() } ?: "No summary"
+            val tags = entry.tags.takeIf { it.isNotBlank() }?.let { " | tags: $it" }.orEmpty()
+            lines += "${entry.title}: $summary (${entry.sourceType}: ${entry.sourcePath})$tags"
+        }
+        return lines
+    }
+
+    val noteFolder = memoryFolder?.let { findDescendantFolder(it, "notes") }
+    if (noteFolder == null) {
+        return emptyList()
+    }
+
+    val notes = noteFolder.listFiles()
+        .filter { it.isFile && it.name?.startsWith("MEMORY-") == true }
+        .sortedBy { it.name.orEmpty() }
+        .take(4)
+        .map { file -> file.name ?: "memory note" }
+        .toList()
+    return if (notes.isEmpty()) emptyList() else listOf("${notes.size} memory note file${if (notes.size == 1) "" else "s"}") + notes
+}
+
+private fun readMemoryIndex(context: Context, file: DocumentFile): List<MemoryIndexEntry> {
+    val text = readText(context, file).orEmpty()
+    if (text.isBlank()) return emptyList()
+
+    val entries = mutableListOf<MemoryIndexEntry>()
+    runCatching {
+        val root = JSONObject(text)
+        val array = root.optJSONArray("entries") ?: JSONArray()
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index) ?: continue
+            entries += MemoryIndexEntry(
+                memoryId = item.optString("memory_id"),
+                title = item.optString("title"),
+                sourceType = item.optString("source_type"),
+                sourcePath = item.optString("source_path"),
+                summary = item.optString("summary"),
+                tags = item.optString("tags"),
+            )
+        }
+    }
+    return entries
+}
+
 private fun countFiles(folder: DocumentFile): Int {
     if (folder.isFile) return 1
-    return folder.listFiles().sumOf { child ->
+    return folder.listFiles().sumOf { child -> 
         if (child.isFile) 1 else countFiles(child)
     }
 }
+
+private data class MemoryIndexEntry(
+    val memoryId: String,
+    val title: String,
+    val sourceType: String,
+    val sourcePath: String,
+    val summary: String,
+    val tags: String,
+)
