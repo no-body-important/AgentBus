@@ -34,6 +34,7 @@ In practice, AgentBus is useful when you want an AI-friendly project hub that fe
 
 AgentBus is a good fit when you want:
 
+- collaborate from the standard ChatGPT app using live GitHub-backed project context, so multiple agents and contributors can stay aligned on the same work without needing a separate API-driven workflow
 - a shared task bus for multiple AI agents working in the same repo
 - a readable audit trail of what each agent saw, decided, and changed
 - fast handoff between review-only, observe-only, and act-capable agents
@@ -46,6 +47,7 @@ AgentBus is a good fit when you want:
 
 ## Example use cases
 
+- using ChatGPT with the GitHub connector to collaborate in shared multi-agent project context, where everyone can read the same repo state, preserve continuity, and continue the same thread of work
 - coordinating two or more AI agents on one codebase
 - routing comments, labels, and task files to the right agent automatically
 - keeping a reviewer, implementer, and observer in the same project context
@@ -114,6 +116,8 @@ Already available today:
 - a routing ledger for traceable handoffs
 - a memory layer for searchable, semantically useful notes
 - routed GitHub comments for supported agent handles
+
+In other words, the project already covers the main coordination loop, and the remaining work is mostly lifecycle polish, validation hardening, and release-quality finishing.
 
 ## License
 
