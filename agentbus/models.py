@@ -92,6 +92,7 @@ class InboxFrontmatter(BaseModel):
     status: TaskStatus = TaskStatus.ready
     trace_id: str = ""
     summary: str = ""
+    source_ref: str = ""
 
 
 class MemoryFrontmatter(BaseModel):

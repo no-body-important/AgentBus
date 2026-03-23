@@ -83,7 +83,7 @@ The GitHub Action should:
 2. detect the relevant task or comment
 3. classify the request as observe, review, or act
 4. emit a routing report
-5. optionally post or publish the routing report as the trigger surface
+5. optionally post the routing comment and publish durable inbox markers as the trigger surface
 
 ## Recommended upgrades
 

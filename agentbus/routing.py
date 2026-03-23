@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 from typing import Any
 
 from agentbus.agents import AgentRegistry, default_registry, load_agent_registry, normalize_handle
+from agentbus.inbox import write_inbox_marker
 from agentbus.frontmatter import load_task
 from agentbus.memory import build_memory_query_from_task, build_memory_query_from_text, search_memory
 from agentbus.models import RouteMode, TaskFrontmatter, TaskStatus
@@ -46,6 +47,7 @@ class RoutingReport:
     decisions: list[RoutingDecision] = field(default_factory=list)
     comment_body: str = ""
     context_notes: list[dict[str, Any]] = field(default_factory=list)
+    inbox_markers: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -53,6 +55,7 @@ class RoutingReport:
             "decision_count": len(self.decisions),
             "comment_body": self.comment_body,
             "context_notes": self.context_notes,
+            "inbox_markers": self.inbox_markers,
             "decisions": [asdict(decision) for decision in self.decisions],
         }
 
@@ -204,6 +207,7 @@ def route_event(
     repo: AgentBusRepo,
     event_name: str,
     event_payload: dict[str, Any] | None = None,
+    emit_inbox_markers: bool = False,
 ) -> RoutingReport:
     payload = event_payload or {}
     registry = load_agent_registry(repo.agents_config_path())
@@ -242,8 +246,33 @@ def route_event(
             }
             for hit in context_hits
         ]
-        report = RoutingReport(event_name=event_name, decisions=decisions, context_notes=context_notes)
-        return RoutingReport(event_name=event_name, decisions=decisions, comment_body=compose_comment(report, registry), context_notes=context_notes)
+        inbox_markers: list[dict[str, Any]] = []
+        if emit_inbox_markers:
+            for decision in decisions:
+                marker_path = write_inbox_marker(
+                    repo,
+                    decision.target_agent,
+                    source_ref=source_ref or decision.source_ref or decision.trace_id or event_name,
+                    summary=decision.reason or f"Routing update for {decision.target_agent}",
+                    body=body or decision.reason,
+                    trace_id=trace_id or decision.trace_id,
+                    task_id=trace_id or source_ref or decision.trace_id or event_name,
+                )
+                inbox_markers.append(
+                    {
+                        "path": str(marker_path.relative_to(repo.root)),
+                        "target_agent": decision.target_agent,
+                        "source_ref": source_ref or decision.source_ref or decision.trace_id or event_name,
+                        "trace_id": trace_id or decision.trace_id,
+                    }
+                )
+        report = RoutingReport(
+            event_name=event_name,
+            decisions=decisions,
+            context_notes=context_notes,
+            inbox_markers=inbox_markers,
+        )
+        return replace(report, comment_body=compose_comment(report, registry))
 
     if event_name == "push":
         for path in _extract_changed_paths(payload):

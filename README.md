@@ -101,7 +101,7 @@ For tagged Android releases, set these repository secrets:
 AgentBus already includes the core collaboration path. The next useful additions are:
 
 - stricter schema checks for task/result/memory frontmatter edge cases
-- fuller GitHub issue and pull request bridging beyond routed comments
+- fuller GitHub issue and pull request bridging beyond routed comments and inbox markers
 - more release hardening for Android packaging and publishing
 - additional device QA and onboarding polish for first-time users
 
@@ -115,7 +115,7 @@ Already available today:
 - archive and promote commands for task/result lifecycle control
 - a routing ledger for traceable handoffs
 - a memory layer for searchable, semantically useful notes
-- routed GitHub comments for supported agent handles
+- routed GitHub comments plus durable inbox markers for supported agent handles
 
 In other words, the project already covers the main coordination loop, and the remaining work is mostly lifecycle polish, validation hardening, and release-quality finishing.
 

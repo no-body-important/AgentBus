@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from agentbus.agents import AgentDefinition, AgentRegistry
-from agentbus.frontmatter import write_document
+from agentbus.frontmatter import load_inbox, write_document
 from agentbus.memory import capture_memory_from_result
 from agentbus.models import RouteMode, TaskFrontmatter, TaskStatus
 from agentbus.models import ResultFrontmatter, ResultStatus
@@ -161,6 +161,29 @@ def test_route_event_routes_labels(tmp_path: Path) -> None:
     report = route_event(repo, event_name="issue_comment", event_payload=payload)
 
     assert any(decision.target_agent == "codex" for decision in report.decisions)
+
+
+def test_route_event_writes_inbox_markers_for_issue_comments(tmp_path: Path) -> None:
+    repo = AgentBusRepo(root=tmp_path)
+    payload = {
+        "comment": {"body": "@codex please review this"},
+        "issue": {"number": 88, "labels": [{"name": "needs-codex"}]},
+        "trace_id": "TRACE-INBOX-88",
+    }
+
+    report = route_event(repo, event_name="issue_comment", event_payload=payload, emit_inbox_markers=True)
+
+    assert report.inbox_markers
+    marker = report.inbox_markers[0]
+    assert marker["target_agent"] == "codex"
+    assert marker["trace_id"] == "TRACE-INBOX-88"
+
+    inbox_files = list((tmp_path / "agent_bus" / "inbox" / "codex").glob("INBOX-*.md"))
+    assert len(inbox_files) == 1
+    inbox = load_inbox(inbox_files[0])
+    assert inbox.to_agent == "codex"
+    assert inbox.trace_id == "TRACE-INBOX-88"
+    assert inbox.source_ref == "issue#88"
 
 
 def test_route_event_includes_memory_context(tmp_path: Path) -> None:
