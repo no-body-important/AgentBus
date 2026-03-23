@@ -47,6 +47,9 @@ Open `android-app/` in Android Studio to build the graphical Android app and gen
 
 For a one-command local deploy, use `scripts/android_install.ps1`.
 
+If you plan to contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
+If you find a security issue, read [SECURITY.md](SECURITY.md).
+
 For tagged Android releases, set these repository secrets:
 
 - `ANDROID_KEYSTORE_B64`

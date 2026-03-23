@@ -1,5 +1,6 @@
 package com.agentbus.mobile
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,8 +41,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -60,13 +67,36 @@ private const val TUTORIAL_ROUTE = "tutorial"
 private const val REPO_ROUTE = "repo"
 private const val AGENTS_ROUTE = "agents"
 private const val WORKER_ROUTE = "worker"
+private const val APP_PREFS = "agentbus_mobile_app"
+private const val PREFS_ONBOARDING_SEEN = "onboarding_seen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentBusApp() {
+    val context = LocalContext.current
+    val prefs = rememberSaveable(context) { context.getSharedPreferences(APP_PREFS, Context.MODE_PRIVATE) }
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: HOME_ROUTE
+    var showOnboarding by rememberSaveable {
+        mutableStateOf(!prefs.getBoolean(PREFS_ONBOARDING_SEEN, false))
+    }
+
+    if (showOnboarding) {
+        OnboardingDialog(
+            onStartHere = {
+                prefs.edit().putBoolean(PREFS_ONBOARDING_SEEN, true).apply()
+                showOnboarding = false
+                navController.navigate(REPO_ROUTE) {
+                    launchSingleTop = true
+                }
+            },
+            onDismiss = {
+                prefs.edit().putBoolean(PREFS_ONBOARDING_SEEN, true).apply()
+                showOnboarding = false
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -115,6 +145,33 @@ fun AgentBusApp() {
     }
 }
 
+@Composable
+private fun OnboardingDialog(
+    onStartHere: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Welcome to AgentBus") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Start with the repo browser, then open the memory workspace and the tutorial.")
+                Text("This app is built to stay lightweight while still showing tasks, results, agents, memory, and worker flows.")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onStartHere) {
+                Text("Start here")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Not now")
+            }
+        },
+    )
+}
+
 private data class BottomDestination(
     val route: String,
     val label: String,
@@ -140,6 +197,7 @@ private fun HomeScreen() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         HeroCard()
+        QuickStartCard()
         SectionTitle(title = "What AgentBus does", subtitle = "A file-based bus for agent collaboration.")
         FeatureGrid()
         SectionTitle(title = "Quick facts", subtitle = "Designed to stay lightweight and explicit.")
@@ -150,6 +208,23 @@ private fun HomeScreen() {
                 "Android can run as a local worker host",
             ),
         )
+    }
+}
+
+@Composable
+private fun QuickStartCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Quick start", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = "1. Open the Repo tab and choose a local AgentBus folder.\n2. Inspect tasks, results, and memory.\n3. Use Guide for workflow details.\n4. Use Worker when you want the device to participate.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
 

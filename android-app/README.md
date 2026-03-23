@@ -12,6 +12,7 @@ It is intentionally lightweight:
 - live memory note search and write-back
 - load an indexed note into the editor and update it in place
 - inspect note provenance and body preview for the selected memory entry
+- first-run onboarding that points new users to Repo, Guide, and Worker
 - local worker guidance for desktop and Android/Termux flows
 
 ## Open and build
@@ -47,6 +48,7 @@ Use `scripts/android_install.ps1` to build, install, and optionally launch the a
 - understanding the AgentBus protocol visually
 - reviewing agents, routes, worker modes, and memory context
 - searching and writing memory notes directly into the selected repo tree
+- getting a guided first-run path before you explore the app
 - giving you a guided mobile front end for the same repo-backed system
 
 ## What it is not

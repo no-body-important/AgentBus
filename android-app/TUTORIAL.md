@@ -10,6 +10,7 @@ Its job is to make the system easier to understand and use on a phone:
 - how tasks move
 - how comments and labels trigger routing
 - how a local worker can run on Android or Termux
+- how to start quickly from the first-run onboarding card
 
 ## 2. How it fits into the system
 
@@ -43,8 +44,9 @@ The app is a visual companion that helps you inspect and understand that shared 
 1. Open `android-app/` in Android Studio.
 2. Let Gradle sync.
 3. Run the app on an emulator or connected device.
-4. Use the tutorial screen to understand the workflow.
-5. Use the worker screen to see how Android/Termux fits in.
+4. Use the onboarding dialog or Home screen quick-start card to orient yourself.
+5. Use the tutorial screen to understand the workflow.
+6. Use the worker screen to see how Android/Termux fits in.
 
 ## 5. How the Android/Termux worker fits
 
