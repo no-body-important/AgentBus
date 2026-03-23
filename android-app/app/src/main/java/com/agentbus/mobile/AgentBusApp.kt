@@ -137,7 +137,12 @@ fun AgentBusApp() {
                 .padding(padding)
                 .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
-            composable(HOME_ROUTE) { HomeScreen() }
+            composable(HOME_ROUTE) {
+                HomeScreen(
+                    onOpenRepo = { navController.navigate(REPO_ROUTE) },
+                    onOpenGuide = { navController.navigate(TUTORIAL_ROUTE) },
+                )
+            }
             composable(TUTORIAL_ROUTE) { TutorialScreen() }
             composable(REPO_ROUTE) { RepoScreen() }
             composable(AGENTS_ROUTE) { AgentsScreen() }
@@ -153,16 +158,17 @@ private fun OnboardingDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.Folder, contentDescription = null) },
         title = { Text("Welcome to AgentBus") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Start with the repo browser, then open the memory workspace and the tutorial.")
-                Text("This app is built to stay lightweight while still showing tasks, results, agents, memory, and worker flows.")
+                Text("Start with the repo browser, then open the memory workspace and the guide.")
+                Text("This app stays lightweight while still showing tasks, results, agents, memory, and worker flows.")
             }
         },
         confirmButton = {
             TextButton(onClick = onStartHere) {
-                Text("Start here")
+                Text("Open repo")
             }
         },
         dismissButton = {
@@ -188,7 +194,10 @@ private val BottomDestinations = listOf(
 )
 
 @Composable
-private fun HomeScreen() {
+private fun HomeScreen(
+    onOpenRepo: () -> Unit,
+    onOpenGuide: () -> Unit,
+) {
     val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
@@ -199,6 +208,10 @@ private fun HomeScreen() {
     ) {
         HeroCard()
         QuickStartCard()
+        HomeActions(
+            onOpenRepo = onOpenRepo,
+            onOpenGuide = onOpenGuide,
+        )
         SectionTitle(title = "What AgentBus does", subtitle = "A file-based bus for agent collaboration.")
         FeatureGrid()
         SectionTitle(title = "Quick facts", subtitle = "Designed to stay lightweight and explicit.")
@@ -222,10 +235,22 @@ private fun QuickStartCard() {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Quick start", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(
-                text = "1. Open the Repo tab and choose a local AgentBus folder.\n2. Inspect tasks, results, and memory.\n3. Use Guide for workflow details.\n4. Use Worker when you want the device to participate.",
+                text = "1. Open the Repo tab and choose a local AgentBus folder.\n2. Inspect tasks, results, inboxes, and memory.\n3. Use Guide for workflow details.\n4. Use Worker when you want the device to participate.",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HomeActions(
+    onOpenRepo: () -> Unit,
+    onOpenGuide: () -> Unit,
+) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        AssistChip(onClick = onOpenRepo, label = { Text("Open repo") })
+        AssistChip(onClick = onOpenGuide, label = { Text("Open guide") })
     }
 }
 

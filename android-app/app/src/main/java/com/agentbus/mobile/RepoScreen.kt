@@ -108,6 +108,9 @@ fun RepoScreen() {
             title = "Live Repo",
             subtitle = "Connect a local clone or synced folder and read AgentBus state directly.",
         )
+        if (repoTreeUriString.isBlank()) {
+            EmptyRepoHint()
+        }
 
         RepoStatusCard(
             snapshot = snapshot,
@@ -179,7 +182,7 @@ fun RepoScreen() {
                         existingMemoryId = selectedMemoryId.ifBlank { null },
                         existingNotePath = snapshot.memoryEntries.firstOrNull { it.memoryId == selectedMemoryId }?.notePath?.ifBlank { null },
                     )
-                memoryStatus = result
+                    memoryStatus = result
                     if (result.startsWith("Saved")) {
                         selectedMemoryId = ""
                         refreshNonce++
@@ -200,6 +203,24 @@ fun RepoScreen() {
             subtitle = "A small sample of real files detected in the tree.",
             items = snapshot.sampleFiles.ifEmpty { listOf("No files detected yet") },
         )
+    }
+}
+
+@Composable
+private fun EmptyRepoHint() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("No folder selected yet", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Tap Choose folder and select a local clone or synced AgentBus tree. The browser, memory index, and write-back controls become active after permission is granted.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

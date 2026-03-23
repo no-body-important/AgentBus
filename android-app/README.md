@@ -43,6 +43,12 @@ For GitHub release automation, set the repository secrets `ANDROID_KEYSTORE_B64`
 
 Use `scripts/android_install.ps1` to build, install, and optionally launch the app on a connected device.
 
+## Release verification
+
+Use `scripts/verify_android_release.ps1` to generate a temporary signing key, build `assembleRelease`, and verify the APK signature locally.
+
+The script cleans up the temporary keystore and `android-app/signing.properties` after it finishes, so it is safe to run without affecting your real release signing material.
+
 ## Screenshots
 
 These captures were taken on a Samsung Galaxy S24 Ultra during the final validation pass:

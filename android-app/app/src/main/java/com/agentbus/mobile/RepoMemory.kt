@@ -141,6 +141,13 @@ fun MemoryWorkspaceSection(
                         Text("Search this")
                     }
                 }
+                if (!canWrite) {
+                    Text(
+                        text = "Pick a repo folder to enable memory writes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (statusMessage.isNotBlank()) {
                     Text(
                         text = statusMessage,

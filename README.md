@@ -76,6 +76,7 @@ agentbus worker --agent android --once --handler-script scripts/termux_handler.p
 Open `android-app/` in Android Studio to build the graphical Android app and generate an APK.
 
 For a one-command local deploy, use `scripts/android_install.ps1`.
+To validate the signed release path locally, use `scripts/verify_android_release.ps1`.
 
 If you plan to contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
 If you find a security issue, read [SECURITY.md](SECURITY.md).

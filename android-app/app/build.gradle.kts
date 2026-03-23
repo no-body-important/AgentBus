@@ -29,6 +29,26 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            if (releaseSigningReady) {
+                val storeFilePath = releaseSigningProperties.getProperty("storeFile")
+                    ?: throw GradleException("signing.properties is missing storeFile")
+                val storePasswordValue = releaseSigningProperties.getProperty("storePassword")
+                    ?: throw GradleException("signing.properties is missing storePassword")
+                val keyAliasValue = releaseSigningProperties.getProperty("keyAlias")
+                    ?: throw GradleException("signing.properties is missing keyAlias")
+                val keyPasswordValue = releaseSigningProperties.getProperty("keyPassword")
+                    ?: throw GradleException("signing.properties is missing keyPassword")
+
+                storeFile = rootProject.file(storeFilePath)
+                storePassword = storePasswordValue
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -62,26 +82,6 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-
-    signingConfigs {
-        create("release") {
-            if (releaseSigningReady) {
-                val storeFilePath = releaseSigningProperties.getProperty("storeFile")
-                    ?: throw GradleException("signing.properties is missing storeFile")
-                val storePasswordValue = releaseSigningProperties.getProperty("storePassword")
-                    ?: throw GradleException("signing.properties is missing storePassword")
-                val keyAliasValue = releaseSigningProperties.getProperty("keyAlias")
-                    ?: throw GradleException("signing.properties is missing keyAlias")
-                val keyPasswordValue = releaseSigningProperties.getProperty("keyPassword")
-                    ?: throw GradleException("signing.properties is missing keyPassword")
-
-                storeFile = rootProject.file(storeFilePath)
-                storePassword = storePasswordValue
-                keyAlias = keyAliasValue
-                keyPassword = keyPasswordValue
-            }
         }
     }
 }
