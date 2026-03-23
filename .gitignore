@@ -16,3 +16,12 @@ tmp/
 *.sqlite
 *.sqlite3
 agentbus.egg-info/
+.idea/
+*.iml
+android-app/.gradle/
+android-app/.idea/
+android-app/local.properties
+android-app/**/build/
+android-app/**/captures/
+android-app/**/output/
+android-app/.cxx/

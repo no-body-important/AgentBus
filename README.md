@@ -10,6 +10,7 @@ It turns the file-driven handoff setup into an independent project with:
 - a small Python package for parsing and validation
 - a CLI for validation, routing, and worker execution
 - CI to catch broken handoff files early
+- a native Android companion app scaffold in `android-app/`
 
 ## What lives where
 
@@ -22,6 +23,7 @@ It turns the file-driven handoff setup into an independent project with:
 - `agent_bus/templates/` contains the canonical file templates
 - `agentbus/` contains the reusable Python tooling
 - `scripts/termux_handler.py` shows a minimal local worker handler
+- `android-app/` contains the Compose-based Android companion app scaffold
 
 ## Quick start
 
@@ -35,6 +37,8 @@ Run a local worker once:
 ```powershell
 agentbus worker --agent android --once --handler-script scripts/termux_handler.py
 ```
+
+Open `android-app/` in Android Studio to build the graphical Android app and generate an APK.
 
 ## Design goals
 
