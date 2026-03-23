@@ -42,10 +42,16 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           if [[ -z "${ANDROID_KEYSTORE_B64:-}" || -z "${ANDROID_KEYSTORE_PASSWORD:-}" || -z "${ANDROID_KEY_ALIAS:-}" || -z "${ANDROID_KEY_PASSWORD:-}" ]]; then
+            if [[ "$EVENT_NAME" == "push" ]]; then
+              echo "Release signing secrets are required for tag pushes."
+              exit 1
+            fi
             echo "Release signing secrets are not configured; continuing with a debug APK."
+            echo "RELEASE_MODE=debug" >> "$GITHUB_ENV"
             exit 0
           fi
           mkdir -p android-app/keystore
@@ -56,17 +62,20 @@ jobs:
           keyAlias=$ANDROID_KEY_ALIAS
           keyPassword=$ANDROID_KEY_PASSWORD
           EOF
+          echo "RELEASE_MODE=release" >> "$GITHUB_ENV"
 
       - name: Build Android APK
         shell: bash
         working-directory: android-app
         run: |
           set -euo pipefail
-          if [[ -f signing.properties ]]; then
+          if [[ "${RELEASE_MODE:-debug}" == "release" ]]; then
             ./gradlew assembleRelease
+            echo "Built signed Android release APK."
             echo "APK_PATH=app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
           else
             ./gradlew assembleDebug
+            echo "Built debug Android APK."
             echo "APK_PATH=app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
           fi
 

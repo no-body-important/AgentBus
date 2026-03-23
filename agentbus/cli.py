@@ -9,6 +9,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from agentbus.frontmatter import load_task
+from agentbus.lifecycle import archive_task_pair, promote_task_pair
 from agentbus.memory import (
     capture_memory_from_document,
     build_memory_id,
@@ -116,6 +117,18 @@ def build_parser() -> argparse.ArgumentParser:
     memory_search_parser.add_argument("--query", required=True, help="search terms or a phrase")
     memory_search_parser.add_argument("--limit", type=int, default=5, help="maximum results to return")
     memory_search_parser.add_argument("--json", action="store_true", help="emit JSON output instead of text")
+
+    archive_parser = subparsers.add_parser("archive", help="archive a completed task and matching result")
+    archive_parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root containing agent_bus/")
+    archive_parser.add_argument("--task", type=Path, required=True, help="task file to archive")
+    archive_parser.add_argument("--result", type=Path, default=None, help="optional matching result file to archive")
+    archive_parser.add_argument("--dry-run", action="store_true", help="print the archive target without writing")
+
+    promote_parser = subparsers.add_parser("promote", help="restore an archived task and matching result")
+    promote_parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root containing agent_bus/")
+    promote_parser.add_argument("--task", type=Path, required=True, help="archived task file to restore")
+    promote_parser.add_argument("--result", type=Path, default=None, help="optional archived result file to restore")
+    promote_parser.add_argument("--dry-run", action="store_true", help="print the restore target without writing")
 
     return parser
 
@@ -276,6 +289,26 @@ def cmd_memory_search(root: Path, query: str, limit: int, json_output: bool) -> 
     return 0
 
 
+def cmd_archive(root: Path, task: Path, result: Path | None, dry_run: bool) -> int:
+    repo = AgentBusRepo(root=root)
+    operation = archive_task_pair(repo, task, result_path=result, dry_run=dry_run)
+    print(f"OK: {operation.action} task {operation.task.source} -> {operation.task.target}")
+    if operation.result is not None:
+        print(f"OK: {operation.action} result {operation.result.source} -> {operation.result.target}")
+    print(f"ARCHIVE_ROOT={operation.archive_root}")
+    return 0
+
+
+def cmd_promote(root: Path, task: Path, result: Path | None, dry_run: bool) -> int:
+    repo = AgentBusRepo(root=root)
+    operation = promote_task_pair(repo, task, archived_result_path=result, dry_run=dry_run)
+    print(f"OK: {operation.action} task {operation.task.source} -> {operation.task.target}")
+    if operation.result is not None:
+        print(f"OK: {operation.action} result {operation.result.source} -> {operation.result.target}")
+    print(f"ARCHIVE_ROOT={operation.archive_root}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -307,6 +340,10 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_memory_capture(args.root, args.source_file, args.source_kind, args.author, args.dry_run)
         if args.memory_command == "search":
             return cmd_memory_search(args.root, args.query, args.limit, args.json)
+    if args.command == "archive":
+        return cmd_archive(args.root, args.task, args.result, args.dry_run)
+    if args.command == "promote":
+        return cmd_promote(args.root, args.task, args.result, args.dry_run)
 
     parser.error(f"unsupported command: {args.command}")
     return 2
