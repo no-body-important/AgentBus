@@ -81,6 +81,21 @@ fun RepoScreen() {
     ) {
         value = loadRepoSnapshot(context, repoTreeUri)
     }
+    val selectedMemoryEntry = remember(snapshot.memoryEntries, selectedMemoryId) {
+        snapshot.memoryEntries.firstOrNull { it.memoryId == selectedMemoryId }
+    }
+    val selectedMemoryBody by produceState(
+        initialValue = "",
+        repoTreeUriString,
+        selectedMemoryEntry?.notePath,
+        refreshNonce,
+    ) {
+        value = if (repoTreeUri != null && selectedMemoryEntry != null) {
+            readMemoryNoteBody(context, repoTreeUri, selectedMemoryEntry.notePath).orEmpty()
+        } else {
+            ""
+        }
+    }
 
     val scrollState = rememberScrollState()
     Column(
@@ -164,12 +179,20 @@ fun RepoScreen() {
                         existingMemoryId = selectedMemoryId.ifBlank { null },
                         existingNotePath = snapshot.memoryEntries.firstOrNull { it.memoryId == selectedMemoryId }?.notePath?.ifBlank { null },
                     )
-                    memoryStatus = result
+                memoryStatus = result
                     if (result.startsWith("Saved")) {
                         selectedMemoryId = ""
                         refreshNonce++
                     }
                 }
+            },
+        )
+        MemoryDetailCard(
+            selectedEntry = selectedMemoryEntry,
+            noteBody = selectedMemoryBody,
+            onClearSelection = {
+                selectedMemoryId = ""
+                memoryStatus = "Selection cleared."
             },
         )
         SummarySection(

@@ -153,6 +153,73 @@ fun MemoryWorkspaceSection(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun MemoryDetailCard(
+    selectedEntry: MemoryIndexEntry?,
+    noteBody: String,
+    onClearSelection: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        MemorySectionHeader(
+            title = "Memory detail",
+            subtitle = "Inspect provenance and note body for the selected memory entry.",
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (selectedEntry == null) {
+                    Text(
+                        text = "Select a memory note above to inspect its body and provenance.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(selectedEntry.title, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = selectedEntry.memoryId,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "Source: ${selectedEntry.sourceType} • ${selectedEntry.sourcePath}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Note file: ${selectedEntry.notePath.ifBlank { "unknown" }}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (selectedEntry.tags.isNotBlank()) {
+                        Text(
+                            text = "Tags: ${selectedEntry.tags}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (noteBody.isNotBlank()) {
+                        Text(
+                            text = noteBody,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    } else {
+                        Text(
+                            text = "No note body loaded.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = onClearSelection) {
+                        Text("Clear selection")
+                    }
+                }
+            }
+        }
+    }
+}
+
 data class MemoryIndexEntry(
     val memoryId: String,
     val title: String,
@@ -228,6 +295,7 @@ fun writeMemoryNote(
             indexFile = indexFile,
             memoryId = memoryId,
             title = noteTitle,
+            sourcePath = cleanSourcePath,
             notePath = "memory/notes/${noteFile.name ?: "$memoryId.md"}",
             sourceType = "manual",
             summary = noteSummary,
@@ -271,6 +339,13 @@ private fun readText(context: Context, file: DocumentFile): String? {
     }
 }
 
+fun readMemoryNoteBody(context: Context, treeUri: Uri, notePath: String): String? {
+    val root = DocumentFile.fromTreeUri(context, treeUri) ?: return null
+    val repoRoot = resolveAgentBusRoot(root)
+    val candidate = repoRoot.findFileByPath(notePath) ?: repoRoot.findFileByPath(notePath.substringAfter("agent_bus/", notePath))
+    return candidate?.let { readText(context, it) }
+}
+
 private fun findMemoryNoteFile(notesRoot: DocumentFile, existingNotePath: String?, memoryId: String): DocumentFile? {
     val candidates = listOfNotNull(
         existingNotePath?.substringAfterLast('/'),
@@ -280,6 +355,25 @@ private fun findMemoryNoteFile(notesRoot: DocumentFile, existingNotePath: String
         notesRoot.findFile(candidate)?.let { return it }
     }
     return null
+}
+
+private fun DocumentFile.findFileByPath(relativePath: String): DocumentFile? {
+    val parts = relativePath.split('/').filter { it.isNotBlank() }
+    var current: DocumentFile = this
+    for ((index, part) in parts.withIndex()) {
+        val next = current.listFiles().firstOrNull { child -> child.name == part }
+        if (next == null) {
+            return null
+        }
+        if (index == parts.lastIndex) {
+            return next
+        }
+        if (!next.isDirectory) {
+            return null
+        }
+        current = next
+    }
+    return current
 }
 
 private fun buildMemoryNoteMarkdown(
@@ -326,6 +420,7 @@ private fun writeMemoryIndexEntry(
     indexFile: DocumentFile,
     memoryId: String,
     title: String,
+    sourcePath: String,
     notePath: String,
     sourceType: String,
     summary: String,
@@ -341,14 +436,14 @@ private fun writeMemoryIndexEntry(
     }.getOrElse { JSONObject().put("entries", JSONArray()) }
     val entries = root.optJSONArray("entries") ?: JSONArray().also { root.put("entries", it) }
     val entry = JSONObject().apply {
-        put("dedupe_key", listOf("observation", sourceType, notePath, sourceTraceId, authorAgent).joinToString("|").lowercase(Locale.US))
+        put("dedupe_key", listOf("observation", sourceType, sourcePath, sourceTraceId, authorAgent).joinToString("|").lowercase(Locale.US))
         put("memory_id", memoryId)
         put("note_path", notePath)
         put("title", title)
         put("memory_type", "observation")
         put("author_agent", authorAgent)
         put("source_type", sourceType)
-        put("source_path", notePath)
+        put("source_path", sourcePath)
         put("source_trace_id", sourceTraceId)
         put("summary", summary)
         put("updated_at", createdAt)

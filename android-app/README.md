@@ -11,6 +11,7 @@ It is intentionally lightweight:
 - indexed memory context from `agent_bus/memory/index/memory-index.json`
 - live memory note search and write-back
 - load an indexed note into the editor and update it in place
+- inspect note provenance and body preview for the selected memory entry
 - local worker guidance for desktop and Android/Termux flows
 
 ## Open and build
