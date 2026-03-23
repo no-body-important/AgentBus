@@ -85,7 +85,7 @@ jobs:
               exit 1
             fi
             echo "Built signed Android release APK at $APK_PATH."
-            echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
+            echo "APK_PATH=android-app/$APK_PATH" >> "$GITHUB_ENV"
           else
             ./gradlew assembleDebug
             APK_PATH="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | sort | tail -n 1)"
@@ -94,7 +94,7 @@ jobs:
               exit 1
             fi
             echo "Built debug Android APK at $APK_PATH."
-            echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
+            echo "APK_PATH=android-app/$APK_PATH" >> "$GITHUB_ENV"
           fi
 
       - name: Verify APK signature
