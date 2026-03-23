@@ -34,6 +34,8 @@ fun MemoryWorkspaceSection(
     memoryEntries: List<MemoryIndexEntry>,
     query: String,
     onQueryChange: (String) -> Unit,
+    selectedMemoryId: String,
+    onSelectEntry: (MemoryIndexEntry) -> Unit,
     title: String,
     onTitleChange: (String) -> Unit,
     summary: String,
@@ -78,7 +80,9 @@ fun MemoryWorkspaceSection(
                 } else {
                     filteredEntries.take(5).forEach { entry ->
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(entry.title, style = MaterialTheme.typography.titleMedium)
+                            TextButton(onClick = { onSelectEntry(entry) }) {
+                                Text(if (entry.memoryId == selectedMemoryId) "Selected: ${entry.title}" else entry.title)
+                            }
                             Text(
                                 text = "${entry.sourceType}: ${entry.sourcePath}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -156,6 +160,7 @@ data class MemoryIndexEntry(
     val sourcePath: String,
     val summary: String,
     val tags: String,
+    val notePath: String,
 )
 
 fun filterMemoryEntries(entries: List<MemoryIndexEntry>, query: String): List<MemoryIndexEntry> {
@@ -184,6 +189,8 @@ fun writeMemoryNote(
     summary: String,
     tags: String,
     sourcePath: String,
+    existingMemoryId: String? = null,
+    existingNotePath: String? = null,
 ): String {
     val root = DocumentFile.fromTreeUri(context, treeUri) ?: return "Could not open the selected folder."
     val repoRoot = resolveAgentBusRoot(root)
@@ -195,9 +202,12 @@ fun writeMemoryNote(
     val noteSummary = summary.trim().ifBlank { "No summary provided." }
     val tagList = parseTags(tags)
     val createdAt = nowUtcIso()
-    val memoryId = buildMemoryId("android", noteTitle, createdAt)
+    val memoryId = existingMemoryId?.takeIf { it.isNotBlank() } ?: buildMemoryId("android", noteTitle, createdAt)
     val cleanSourcePath = sourcePath.trim().ifBlank { "android-app" }
-    val noteFile = notesRoot.createFile("text/markdown", "$memoryId.md") ?: return "Could not create memory note file."
+    val noteFile = findMemoryNoteFile(notesRoot, existingNotePath, memoryId) ?: notesRoot.createFile("text/markdown", "$memoryId.md")
+    if (noteFile == null) {
+        return "Could not create memory note file."
+    }
     val noteBody = buildMemoryNoteMarkdown(
         memoryId = memoryId,
         title = noteTitle,
@@ -218,7 +228,7 @@ fun writeMemoryNote(
             indexFile = indexFile,
             memoryId = memoryId,
             title = noteTitle,
-            sourcePath = "memory/notes/$memoryId.md",
+            notePath = "memory/notes/${noteFile.name ?: "$memoryId.md"}",
             sourceType = "manual",
             summary = noteSummary,
             tags = tagList,
@@ -259,6 +269,17 @@ private fun readText(context: Context, file: DocumentFile): String? {
     context.contentResolver.openInputStream(file.uri)?.bufferedReader().use { reader ->
         return reader?.readText()
     }
+}
+
+private fun findMemoryNoteFile(notesRoot: DocumentFile, existingNotePath: String?, memoryId: String): DocumentFile? {
+    val candidates = listOfNotNull(
+        existingNotePath?.substringAfterLast('/'),
+        "$memoryId.md",
+    ).distinct()
+    for (candidate in candidates) {
+        notesRoot.findFile(candidate)?.let { return it }
+    }
+    return null
 }
 
 private fun buildMemoryNoteMarkdown(
@@ -305,7 +326,7 @@ private fun writeMemoryIndexEntry(
     indexFile: DocumentFile,
     memoryId: String,
     title: String,
-    sourcePath: String,
+    notePath: String,
     sourceType: String,
     summary: String,
     tags: List<String>,
@@ -320,14 +341,14 @@ private fun writeMemoryIndexEntry(
     }.getOrElse { JSONObject().put("entries", JSONArray()) }
     val entries = root.optJSONArray("entries") ?: JSONArray().also { root.put("entries", it) }
     val entry = JSONObject().apply {
-        put("dedupe_key", listOf("observation", sourceType, sourcePath, sourceTraceId, authorAgent).joinToString("|").lowercase(Locale.US))
+        put("dedupe_key", listOf("observation", sourceType, notePath, sourceTraceId, authorAgent).joinToString("|").lowercase(Locale.US))
         put("memory_id", memoryId)
-        put("note_path", "memory/notes/$memoryId.md")
+        put("note_path", notePath)
         put("title", title)
         put("memory_type", "observation")
         put("author_agent", authorAgent)
         put("source_type", sourceType)
-        put("source_path", sourcePath)
+        put("source_path", notePath)
         put("source_trace_id", sourceTraceId)
         put("summary", summary)
         put("updated_at", createdAt)

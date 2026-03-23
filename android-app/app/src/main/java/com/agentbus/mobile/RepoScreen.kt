@@ -54,6 +54,7 @@ fun RepoScreen() {
     var memoryTags by rememberSaveable { mutableStateOf("android, manual") }
     var memorySourcePath by rememberSaveable { mutableStateOf("android-app") }
     var memoryStatus by rememberSaveable { mutableStateOf("") }
+    var selectedMemoryId by rememberSaveable { mutableStateOf("") }
 
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -129,6 +130,16 @@ fun RepoScreen() {
             memoryEntries = snapshot.memoryEntries,
             query = memorySearchQuery,
             onQueryChange = { memorySearchQuery = it },
+            selectedMemoryId = selectedMemoryId,
+            onSelectEntry = { entry ->
+                selectedMemoryId = entry.memoryId
+                memoryTitle = entry.title
+                memorySummary = entry.summary
+                memoryTags = entry.tags.ifBlank { "android, manual" }
+                memorySourcePath = entry.sourcePath.ifBlank { "android-app" }
+                memorySearchQuery = entry.title
+                memoryStatus = "Loaded ${entry.memoryId} for editing."
+            },
             title = memoryTitle,
             onTitleChange = { memoryTitle = it },
             summary = memorySummary,
@@ -150,9 +161,12 @@ fun RepoScreen() {
                         summary = memorySummary,
                         tags = memoryTags,
                         sourcePath = memorySourcePath,
+                        existingMemoryId = selectedMemoryId.ifBlank { null },
+                        existingNotePath = snapshot.memoryEntries.firstOrNull { it.memoryId == selectedMemoryId }?.notePath?.ifBlank { null },
                     )
                     memoryStatus = result
                     if (result.startsWith("Saved")) {
+                        selectedMemoryId = ""
                         refreshNonce++
                     }
                 }
@@ -437,6 +451,7 @@ private fun readMemoryIndex(context: Context, file: DocumentFile): List<MemoryIn
                 sourcePath = item.optString("source_path"),
                 summary = item.optString("summary"),
                 tags = item.optString("tags"),
+                notePath = item.optString("note_path"),
             )
         }
     }

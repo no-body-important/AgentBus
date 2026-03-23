@@ -10,6 +10,7 @@ It is intentionally lightweight:
 - live repository browser for a selected `agent_bus/` folder tree
 - indexed memory context from `agent_bus/memory/index/memory-index.json`
 - live memory note search and write-back
+- load an indexed note into the editor and update it in place
 - local worker guidance for desktop and Android/Termux flows
 
 ## Open and build

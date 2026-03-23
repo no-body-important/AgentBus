@@ -33,6 +33,7 @@ The app is a visual companion that helps you inspect and understand that shared 
 - open a live repo tree and read `agent_bus/` files directly
 - surface the indexed memory trail from `agent_bus/memory/index/memory-index.json`
 - search memory notes and save a new note back into the selected repo tree
+- tap an indexed memory note to load it into the editor and update it in place
 - show local worker guidance for desktop and Android/Termux
 - it can be expanded further to read live data from a sync service or a remote API
 
