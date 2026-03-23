@@ -29,8 +29,9 @@ The app is a visual companion that helps you inspect and understand that shared 
 - show a dashboard with the current AgentBus structure
 - explain the protocol with step-by-step screens
 - list agents and capabilities
+- open a live repo tree and read `agent_bus/` files directly
 - show local worker guidance for desktop and Android/Termux
-- later, it can be expanded to read live data from the repository or a sync service
+- it can be expanded further to read live data from a sync service or a remote API
 
 ## 4. How to use it
 
@@ -66,3 +67,14 @@ That makes the Android device another local agent host rather than a separate si
 - add authentication or local device approval
 - add task import/export support
 - add an activity log for route decisions and worker runs
+
+## 8. Release signing
+
+To build and publish a signed Android release, provide these secrets in GitHub:
+
+- `ANDROID_KEYSTORE_B64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+The release workflow will use them to build an APK when you push a `v*` tag.

@@ -101,6 +101,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.documentfile)
     implementation(libs.material)
 
     implementation(platform(libs.androidx.compose.bom))

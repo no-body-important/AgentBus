@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,9 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
@@ -58,6 +57,7 @@ import androidx.navigation.compose.rememberNavController
 
 private const val HOME_ROUTE = "home"
 private const val TUTORIAL_ROUTE = "tutorial"
+private const val REPO_ROUTE = "repo"
 private const val AGENTS_ROUTE = "agents"
 private const val WORKER_ROUTE = "worker"
 
@@ -108,6 +108,7 @@ fun AgentBusApp() {
         ) {
             composable(HOME_ROUTE) { HomeScreen() }
             composable(TUTORIAL_ROUTE) { TutorialScreen() }
+            composable(REPO_ROUTE) { RepoScreen() }
             composable(AGENTS_ROUTE) { AgentsScreen() }
             composable(WORKER_ROUTE) { WorkerScreen() }
         }
@@ -123,6 +124,7 @@ private data class BottomDestination(
 private val BottomDestinations = listOf(
     BottomDestination(HOME_ROUTE, "Home", Icons.Filled.Home),
     BottomDestination(TUTORIAL_ROUTE, "Guide", Icons.AutoMirrored.Filled.MenuBook),
+    BottomDestination(REPO_ROUTE, "Repo", Icons.Filled.Folder),
     BottomDestination(AGENTS_ROUTE, "Agents", Icons.Filled.People),
     BottomDestination(WORKER_ROUTE, "Worker", Icons.Filled.Devices),
 )

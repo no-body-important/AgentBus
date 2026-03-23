@@ -1,0 +1,344 @@
+package com.agentbus.mobile
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.documentfile.provider.DocumentFile
+
+private const val REPO_PREFS = "agentbus_mobile_repo"
+private const val REPO_URI_PREF = "repo_tree_uri"
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun RepoScreen() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(REPO_PREFS, Context.MODE_PRIVATE) }
+    var repoTreeUriString by rememberSaveable {
+        mutableStateOf(prefs.getString(REPO_URI_PREF, "") ?: "")
+    }
+    var refreshNonce by remember { mutableIntStateOf(0) }
+
+    val pickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+            repoTreeUriString = uri.toString()
+            prefs.edit().putString(REPO_URI_PREF, repoTreeUriString).apply()
+            refreshNonce++
+        }
+    }
+
+    val repoTreeUri = remember(repoTreeUriString) {
+        repoTreeUriString.takeIf { it.isNotBlank() }?.let(Uri::parse)
+    }
+
+    val snapshot by produceState(
+        initialValue = RepoSnapshot.empty(),
+        repoTreeUriString,
+        refreshNonce,
+    ) {
+        value = loadRepoSnapshot(context, repoTreeUri)
+    }
+
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = Modifier
+            .padding(20.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        SectionHeader(
+            title = "Live Repo",
+            subtitle = "Connect a local clone or synced folder and read AgentBus state directly.",
+        )
+
+        RepoStatusCard(
+            snapshot = snapshot,
+            repoTreeUriString = repoTreeUriString,
+            onPickFolder = { pickerLauncher.launch(repoTreeUri) },
+            onRefresh = { refreshNonce++ },
+        )
+
+        SummarySection(
+            title = "Agent handles",
+            subtitle = "Parsed from `agent_bus/config/agents.yaml` or inferred from live task folders.",
+            items = snapshot.agentHandles.ifEmpty { listOf("No registry found yet") },
+        )
+        SummarySection(
+            title = "Task buckets",
+            subtitle = "Shows the live task folders and file counts.",
+            items = snapshot.taskBuckets.ifEmpty { listOf("No task folders found yet") },
+        )
+        SummarySection(
+            title = "Result buckets",
+            subtitle = "Shows recent result folders and file counts.",
+            items = snapshot.resultBuckets.ifEmpty { listOf("No result folders found yet") },
+        )
+        SummarySection(
+            title = "Inbox buckets",
+            subtitle = "Optional notification folders inside the repo.",
+            items = snapshot.inboxBuckets.ifEmpty { listOf("No inbox folders found yet") },
+        )
+        SummarySection(
+            title = "Live files",
+            subtitle = "A small sample of real files detected in the tree.",
+            items = snapshot.sampleFiles.ifEmpty { listOf("No files detected yet") },
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RepoStatusCard(
+    snapshot: RepoSnapshot,
+    repoTreeUriString: String,
+    onPickFolder: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(snapshot.title, style = MaterialTheme.typography.titleLarge)
+            Text(snapshot.statusMessage, style = MaterialTheme.typography.bodyMedium)
+            if (repoTreeUriString.isNotBlank()) {
+                Text(
+                    text = repoTreeUriString,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistChip(onClick = onPickFolder, label = { Text("Choose folder") }, leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.FolderOpen, contentDescription = null) })
+                AssistChip(onClick = onRefresh, label = { Text("Refresh") })
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummarySection(
+    title: String,
+    subtitle: String,
+    items: List<String>,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionHeader(title = title, subtitle = subtitle)
+        items.forEach { item ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+            ) {
+                Text(
+                    text = item,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, subtitle: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, style = MaterialTheme.typography.titleLarge)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private data class RepoSnapshot(
+    val title: String,
+    val statusMessage: String,
+    val agentHandles: List<String>,
+    val taskBuckets: List<String>,
+    val resultBuckets: List<String>,
+    val inboxBuckets: List<String>,
+    val sampleFiles: List<String>,
+) {
+    companion object {
+        fun empty(): RepoSnapshot = RepoSnapshot(
+            title = "No repo selected",
+            statusMessage = "Pick a folder to view live AgentBus files.",
+            agentHandles = emptyList(),
+            taskBuckets = emptyList(),
+            resultBuckets = emptyList(),
+            inboxBuckets = emptyList(),
+            sampleFiles = emptyList(),
+        )
+    }
+}
+
+private fun loadRepoSnapshot(context: Context, treeUri: Uri?): RepoSnapshot {
+    if (treeUri == null) {
+        return RepoSnapshot.empty()
+    }
+
+    val root = DocumentFile.fromTreeUri(context, treeUri) ?: return RepoSnapshot(
+        title = "Unavailable",
+        statusMessage = "Android could not open the selected folder.",
+        agentHandles = emptyList(),
+        taskBuckets = emptyList(),
+        resultBuckets = emptyList(),
+        inboxBuckets = emptyList(),
+        sampleFiles = emptyList(),
+    )
+
+    val repoRoot = resolveAgentBusRoot(root)
+    val repoLabel = repoRoot.name ?: root.name ?: "Selected folder"
+    val tasksFolder = findDescendantFolder(repoRoot, "tasks")
+    val resultsFolder = findDescendantFolder(repoRoot, "results")
+    val inboxFolder = findDescendantFolder(repoRoot, "inbox")
+    val configFolder = findDescendantFolder(repoRoot, "config")
+    val agentsFile = configFolder?.let { findDescendantFile(it, "agents.yaml") }
+    val registryText = agentsFile?.let { readText(context, it) }.orEmpty()
+
+    val inferredHandles = parseAgentHandles(registryText)
+    val taskBuckets = summarizeBuckets(tasksFolder, "task")
+    val resultBuckets = summarizeBuckets(resultsFolder, "result")
+    val inboxBuckets = summarizeBuckets(inboxFolder, "inbox")
+    val liveFiles = sampleFiles(tasksFolder, resultsFolder, inboxFolder, agentsFile)
+
+    return RepoSnapshot(
+        title = repoLabel,
+        statusMessage = if (repoRoot === root) {
+            "Live AgentBus data loaded from the selected folder."
+        } else {
+            "Live AgentBus data loaded from the agent_bus folder inside the selected tree."
+        },
+        agentHandles = inferredHandles.ifEmpty { inferHandlesFromFolders(tasksFolder, resultsFolder) },
+        taskBuckets = taskBuckets,
+        resultBuckets = resultBuckets,
+        inboxBuckets = inboxBuckets,
+        sampleFiles = liveFiles,
+    )
+}
+
+private fun resolveAgentBusRoot(root: DocumentFile): DocumentFile {
+    findDescendantFolder(root, "agent_bus")?.let { return it }
+    return root
+}
+
+private fun findDescendantFolder(root: DocumentFile, name: String): DocumentFile? {
+    return root.listFiles().firstOrNull { it.isDirectory && it.name == name }
+}
+
+private fun findDescendantFile(root: DocumentFile, name: String): DocumentFile? {
+    return root.listFiles().firstOrNull { it.isFile && it.name == name }
+}
+
+private fun readText(context: Context, file: DocumentFile): String? {
+    context.contentResolver.openInputStream(file.uri)?.bufferedReader().use { reader ->
+        return reader?.readText()
+    }
+}
+
+private fun parseAgentHandles(registryText: String): List<String> {
+    if (registryText.isBlank()) {
+        return emptyList()
+    }
+
+    val handles = linkedSetOf<String>()
+    var inAgentsBlock = false
+    registryText.lineSequence().forEach { rawLine ->
+        val line = rawLine.trimEnd()
+        if (line == "agents:") {
+            inAgentsBlock = true
+            return@forEach
+        }
+        if (!inAgentsBlock) return@forEach
+        val match = Regex("^([A-Za-z0-9_-]+):\\s*$").find(line.trimStart())
+        if (match != null && rawLine.startsWith("  ")) {
+            handles += match.groupValues[1]
+        }
+    }
+    return handles.toList()
+}
+
+private fun inferHandlesFromFolders(tasksFolder: DocumentFile?, resultsFolder: DocumentFile?): List<String> {
+    val handles = linkedSetOf<String>()
+    tasksFolder?.listFiles()?.forEach { child ->
+        if (child.isDirectory && !child.name.isNullOrBlank()) {
+            handles += child.name!!
+        }
+    }
+    resultsFolder?.listFiles()?.forEach { child ->
+        if (child.isDirectory && !child.name.isNullOrBlank()) {
+            handles += child.name!!
+        }
+    }
+    return handles.toList()
+}
+
+private fun summarizeBuckets(folder: DocumentFile?, label: String): List<String> {
+    if (folder == null) {
+        return emptyList()
+    }
+
+    return folder.listFiles()
+        .filter { it.isDirectory }
+        .sortedBy { it.name.orEmpty() }
+        .map { child ->
+            val count = countFiles(child)
+            "${child.name ?: "unknown"}: $count $label file${if (count == 1) "" else "s"}"
+        }
+}
+
+private fun sampleFiles(
+    tasksFolder: DocumentFile?,
+    resultsFolder: DocumentFile?,
+    inboxFolder: DocumentFile?,
+    agentsFile: DocumentFile?,
+): List<String> {
+    val samples = mutableListOf<String>()
+    tasksFolder?.listFiles()?.firstOrNull()?.name?.let { samples += "tasks/$it" }
+    resultsFolder?.listFiles()?.firstOrNull()?.name?.let { samples += "results/$it" }
+    inboxFolder?.listFiles()?.firstOrNull()?.name?.let { samples += "inbox/$it" }
+    agentsFile?.name?.let { samples += "config/$it" }
+    return samples.distinct()
+}
+
+private fun countFiles(folder: DocumentFile): Int {
+    if (folder.isFile) return 1
+    return folder.listFiles().sumOf { child ->
+        if (child.isFile) 1 else countFiles(child)
+    }
+}

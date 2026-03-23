@@ -7,6 +7,7 @@ It is intentionally lightweight:
 - Jetpack Compose UI
 - built-in tutorial screens
 - agent registry overview
+- live repository browser for a selected `agent_bus/` folder tree
 - local worker guidance for desktop and Android/Termux flows
 
 ## Open and build
@@ -30,6 +31,8 @@ From the repo root:
 - release APK: `cd android-app && .\gradlew.bat assembleRelease`
 
 Release builds require a local `android-app/signing.properties` file and a keystore. Copy `signing.properties.example` first, then fill in the values.
+
+For GitHub release automation, set the repository secrets `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
 
 ## One-command deploy
 

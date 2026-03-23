@@ -26,6 +26,7 @@ It turns the file-driven handoff setup into an independent project with:
 - `android-app/` contains the Compose-based Android companion app scaffold
 - `android-app/signing.properties.example` is the template for release signing
 - `scripts/android_install.ps1` builds, installs, and can launch the Android app on a device
+- `android-app/` also includes a live repo browser that can read a selected `agent_bus/` tree
 
 ## Quick start
 
@@ -43,6 +44,13 @@ agentbus worker --agent android --once --handler-script scripts/termux_handler.p
 Open `android-app/` in Android Studio to build the graphical Android app and generate an APK.
 
 For a one-command local deploy, use `scripts/android_install.ps1`.
+
+For tagged Android releases, set these repository secrets:
+
+- `ANDROID_KEYSTORE_B64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
 
 ## Design goals
 
