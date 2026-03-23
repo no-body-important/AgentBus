@@ -8,6 +8,8 @@ owner: "<human supervisor name or handle>"
 created_at: "2026-03-22T00:00:00Z"
 updated_at: "2026-03-22T00:00:00Z"
 status: "drafted"
+route_mode: "act"
+trace_id: "TRACE-YYYYMMDD-001"
 priority: "P2"
 objective: "<single concrete objective>"
 success_criteria:

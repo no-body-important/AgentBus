@@ -12,6 +12,12 @@ class AgentName(str, Enum):
     openclaw = "openclaw"
 
 
+class RouteMode(str, Enum):
+    observe = "observe"
+    review = "review"
+    act = "act"
+
+
 class TaskStatus(str, Enum):
     drafted = "drafted"
     ready = "ready"
@@ -42,6 +48,8 @@ class TaskFrontmatter(BaseModel):
     created_at: datetime
     updated_at: datetime
     status: TaskStatus
+    route_mode: RouteMode = RouteMode.act
+    trace_id: str = ""
     priority: str = "P2"
     objective: str
     success_criteria: list[str] = Field(default_factory=list)
@@ -66,6 +74,7 @@ class ResultFrontmatter(BaseModel):
     started_at: datetime
     finished_at: datetime
     summary: str
+    trace_id: str = ""
     exact_actions_taken: list[str] = Field(default_factory=list)
     findings: list[str] = Field(default_factory=list)
     recommended_next_owner: AgentName | str = "codex"
@@ -86,6 +95,7 @@ class InboxFrontmatter(BaseModel):
     task_path: str
     published_at: datetime
     status: TaskStatus = TaskStatus.ready
+    trace_id: str = ""
     summary: str = ""
 
 

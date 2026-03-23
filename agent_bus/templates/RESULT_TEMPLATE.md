@@ -6,6 +6,7 @@ completion_status: "completed"
 started_at: "2026-03-22T00:00:00Z"
 finished_at: "2026-03-22T00:30:00Z"
 summary: "<short summary of outcome>"
+trace_id: "TRACE-YYYYMMDD-001"
 exact_actions_taken:
   - "<action 1>"
   - "<action 2>"

@@ -37,8 +37,8 @@ agentbus validate
 
 The current scaffold is intentionally small. The next useful additions are:
 
+- routing decisions based on event type and route mode
 - archive and promote commands
 - stricter schema checks for task/result frontmatter
-- Markdown rendering helpers
-- a watcher mode for inbox/task folders
+- a routing ledger for traceable handoffs
 - optional GitHub issue and PR bridging
