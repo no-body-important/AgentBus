@@ -60,3 +60,7 @@ Use `scripts/android_install.ps1` to build, install, and optionally launch the a
 ## Tutorial
 
 See [TUTORIAL.md](TUTORIAL.md) for a more detailed walkthrough.
+
+## License
+
+The Android companion app is part of the main AgentBus project and is covered by the project [Apache 2.0 license](../LICENSE).

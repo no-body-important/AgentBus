@@ -1,0 +1,11 @@
+AgentBus
+
+This product includes:
+
+- a standalone file-based agent coordination core
+- a repo-native memory layer
+- a native Android companion app scaffold
+- local worker and Termux-oriented tooling
+
+Copyright 2026 AgentBus contributors
+

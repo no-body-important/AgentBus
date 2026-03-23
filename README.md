@@ -1,17 +1,17 @@
 # AgentBus
 
-AgentBus is a standalone, repo-based handoff system for human + AI collaboration.
+AgentBus is a standalone, repo-based coordination system for human + AI work.
 
-It turns the file-driven handoff setup into an independent project with:
+It gives you a simple way to keep tasks, results, routing, memory, and device workers in one place:
 
-- a canonical `agent_bus/` state folder
-- a configurable `agent_bus/config/agents.yaml` registry for any number of agents
-- machine-readable task, result, and inbox formats
-- a small Python package for parsing and validation
-- a CLI for validation, routing, and worker execution
-- CI to catch broken handoff files early
-- a native Android companion app scaffold in `android-app/`
-- a repo-native memory layer in `agent_bus/memory/`
+- one canonical `agent_bus/` state folder
+- one configurable `agent_bus/config/agents.yaml` registry for any number of agents
+- machine-readable task, result, inbox, and memory formats
+- one Python package for parsing, validation, routing, and worker execution
+- one native Android companion app in `android-app/`
+- one repo-backed history that stays auditable and easy to sync
+
+In practice, AgentBus is useful when you want an AI-friendly project hub that feels easy to pick up, easy to inspect, and easy to extend without introducing a heavy backend.
 
 ## What lives where
 
@@ -29,6 +29,33 @@ It turns the file-driven handoff setup into an independent project with:
 - `android-app/signing.properties.example` is the template for release signing
 - `scripts/android_install.ps1` builds, installs, and can launch the Android app on a device
 - `android-app/` also includes a live repo browser that can read a selected `agent_bus/` tree
+
+## Why people use it
+
+AgentBus is a good fit when you want:
+
+- a shared task bus for multiple AI agents working in the same repo
+- a readable audit trail of what each agent saw, decided, and changed
+- fast handoff between review-only, observe-only, and act-capable agents
+- a memory layer that lets later work benefit from earlier decisions
+- GitHub-based collaboration without hiding state in a separate database
+- a local worker model for desktop, Android, or Termux
+- a way to keep human oversight in the loop while still automating the boring parts
+- a project structure that is easy to explain to contributors
+- a foundation for agent experiments, coordination workflows, or open-source demos
+
+## Example use cases
+
+- coordinating two or more AI agents on one codebase
+- routing comments, labels, and task files to the right agent automatically
+- keeping a reviewer, implementer, and observer in the same project context
+- running lightweight local workers on a desktop machine or Android device
+- building a repo-backed “memory” of prior findings, decisions, and outcomes
+- tracking release tasks, bug triage, and follow-up work in a structured way
+- letting a phone act as a field worker or companion host for the repo
+- creating a transparent collaboration log for open-source projects
+- supporting research, prototyping, or demo workflows that need repeatable handoffs
+- teaching multi-agent coordination with a system that stays human-readable
 
 ## Quick start
 
@@ -62,6 +89,7 @@ For tagged Android releases, set these repository secrets:
 - Keep the file system as the source of truth
 - Make every handoff readable by humans and parsable by tools
 - Prefer explicit status transitions over hidden state
+- Keep the stack lightweight enough to use without a backend team
 - Make it easy to publish as an open-source GitHub repo
 
 ## Next capabilities
@@ -78,3 +106,8 @@ The current scaffold is intentionally small. The next useful additions are:
 - a routing ledger for traceable handoffs
 - a memory layer for searchable, semantically useful notes
 - optional GitHub issue and PR bridging
+
+## License
+
+AgentBus is licensed under the [Apache License 2.0](LICENSE).
+The Android companion app, memory layer, CLI, and docs are all part of the same project unless split into separate repos later.
