@@ -31,7 +31,13 @@ jobs:
           unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
           mv /tmp/cmdline-tools/cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/"
+          set +o pipefail
           yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" --licenses
+          sdkmanager_status="${PIPESTATUS[1]}"
+          set -o pipefail
+          if [[ "$sdkmanager_status" -ne 0 ]]; then
+            exit "$sdkmanager_status"
+          fi
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
           echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
@@ -55,7 +61,7 @@ jobs:
             exit 0
           fi
           mkdir -p android-app/keystore
-          printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > android-app/keystore/release.jks
+          printf '%s' "$ANDROID_KEYSTORE_B64" | tr -d '\r\n[:space:]' | base64 -d > android-app/keystore/release.jks
           cat > android-app/signing.properties <<EOF
           storeFile=keystore/release.jks
           storePassword=$ANDROID_KEYSTORE_PASSWORD
