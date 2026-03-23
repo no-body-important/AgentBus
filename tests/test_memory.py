@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from agentbus.frontmatter import write_document
-from agentbus.memory import capture_memory_from_result, search_memory
+from agentbus.memory import capture_memory_from_result, load_memory_index, search_memory
 from agentbus.models import ResultFrontmatter, ResultStatus, TaskFrontmatter, TaskStatus
 from agentbus.repo import AgentBusRepo
 from agentbus.worker import WorkerConfig, run_worker_once
@@ -106,6 +106,64 @@ def test_capture_memory_from_result_and_search(tmp_path: Path) -> None:
     assert hits
     assert hits[0].note.source_type == "result"
     assert "routing ledger" in hits[0].note.summary.lower()
+
+
+def test_capture_memory_from_result_is_idempotent(tmp_path: Path) -> None:
+    repo = AgentBusRepo(root=tmp_path)
+    task_path = _write_task(tmp_path)
+    result_path = tmp_path / "agent_bus" / "results" / "codex" / "RESULT-20260322-101.md"
+    result_path.parent.mkdir(parents=True, exist_ok=True)
+    write_document(
+        result_path,
+        {
+            "result_id": "RESULT-20260322-101",
+            "task_id": "TASK-20260322-100",
+            "reporting_agent": "codex",
+            "completion_status": ResultStatus.completed.value,
+            "started_at": "2026-03-22T00:00:00Z",
+            "finished_at": "2026-03-22T00:01:00Z",
+            "summary": "Idempotent memory capture",
+            "trace_id": "TRACE-20260322-100",
+            "exact_actions_taken": ["wrote note"],
+            "findings": [],
+            "recommended_next_owner": "codex",
+            "recommended_next_action": "Keep dedupe stable",
+            "related_artifacts": [str(task_path.relative_to(tmp_path))],
+            "blockers": [],
+            "risks": [],
+            "confidence": "high",
+            "notes": "",
+        },
+        "## Human-readable Report\n\nIdempotent memory.\n",
+    )
+    result_frontmatter = ResultFrontmatter.model_validate(
+        {
+            "result_id": "RESULT-20260322-101",
+            "task_id": "TASK-20260322-100",
+            "reporting_agent": "codex",
+            "completion_status": "completed",
+            "started_at": "2026-03-22T00:00:00Z",
+            "finished_at": "2026-03-22T00:01:00Z",
+            "summary": "Idempotent memory capture",
+            "trace_id": "TRACE-20260322-100",
+            "exact_actions_taken": ["wrote note"],
+            "findings": [],
+            "recommended_next_owner": "codex",
+            "recommended_next_action": "Keep dedupe stable",
+            "related_artifacts": [str(task_path.relative_to(tmp_path))],
+            "blockers": [],
+            "risks": [],
+            "confidence": "high",
+            "notes": "",
+        }
+    )
+
+    first_path = capture_memory_from_result(repo, result_frontmatter, result_path, task_path)
+    second_path = capture_memory_from_result(repo, result_frontmatter, result_path, task_path)
+
+    assert first_path == second_path
+    assert len(list((tmp_path / "agent_bus" / "memory" / "notes").glob("MEMORY-*.md"))) == 1
+    assert len(load_memory_index(repo)["entries"]) == 1
 
 
 def test_worker_writes_memory_note(tmp_path: Path) -> None:
