@@ -75,6 +75,7 @@ jobs:
         working-directory: android-app
         run: |
           set -euo pipefail
+          chmod +x ./gradlew
           if [[ "${RELEASE_MODE:-debug}" == "release" ]]; then
             ./gradlew assembleRelease
             echo "Built signed Android release APK."
