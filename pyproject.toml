@@ -1,0 +1,29 @@
+[project]
+name = "agentbus"
+version = "0.1.0"
+description = "Repo-based agent handoff layer for Codex, humans, and other AI collaborators"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.9.0",
+  "pyyaml>=6.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.3",
+]
+
+[project.scripts]
+agentbus = "agentbus.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentbus*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+norecursedirs = [".git", ".pytest_cache", "__pycache__"]
