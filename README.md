@@ -120,6 +120,17 @@ Already available today:
 
 In other words, the project already covers the main coordination loop, and the remaining work is mostly lifecycle polish, validation hardening, and release-quality finishing.
 
+## Screenshots
+
+Captured on a Samsung Galaxy S24 Ultra during the final phone validation pass:
+
+![AgentBus home screen](docs/screenshots/home.png)
+![Live repo browser](docs/screenshots/repo-live.png)
+![Memory workspace](docs/screenshots/memory.png)
+![Guide, agents, and worker flows](docs/screenshots/guide.png)
+
+The full screenshot set is also mirrored in `android-app/docs/screenshots/` for the companion app docs.
+
 ## License
 
 AgentBus is licensed under the [Apache License 2.0](LICENSE).

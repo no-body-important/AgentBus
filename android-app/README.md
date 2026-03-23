@@ -43,6 +43,15 @@ For GitHub release automation, set the repository secrets `ANDROID_KEYSTORE_B64`
 
 Use `scripts/android_install.ps1` to build, install, and optionally launch the app on a connected device.
 
+## Screenshots
+
+These captures were taken on a Samsung Galaxy S24 Ultra during the final validation pass:
+
+![Home screen](docs/screenshots/home.png)
+![Live repo browser](docs/screenshots/repo-live.png)
+![Memory workspace](docs/screenshots/memory.png)
+![Guide and worker flows](docs/screenshots/guide.png)
+
 ## What this app is for
 
 - understanding the AgentBus protocol visually

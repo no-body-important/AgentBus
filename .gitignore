@@ -28,3 +28,4 @@ android-app/**/build/
 android-app/**/captures/
 android-app/**/output/
 android-app/.cxx/
+artifacts/
