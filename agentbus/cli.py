@@ -48,7 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--event-name",
         type=str,
         default=os.getenv("GITHUB_EVENT_NAME", "manual"),
-        help="event name to route, such as push, issue_comment, or pull_request_review",
+        help="event name to route, such as push, issue_comment, issues, pull_request, or pull_request_review",
     )
     route_parser.add_argument(
         "--event-file",
