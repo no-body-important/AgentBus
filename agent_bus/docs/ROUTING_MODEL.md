@@ -23,6 +23,8 @@ The router decides:
 
 - `push`
 - `workflow_dispatch`
+- `issues`
+- `pull_request`
 
 ### Collaboration events
 
@@ -48,9 +50,10 @@ The router decides:
 - thread snapshots
 - issue comments
 - pull request review comments
+- issue and pull request events, including label changes
 - GitHub Action logs and artifacts
 - local worker loops, including Termux on Android
-- issue and pull request labels such as `needs-codex` or `needs-review`
+- issue and pull request labels such as `needs-openclaw`, `needs-codex`, or `needs-review`
 
 ## Agent registry
 
@@ -81,10 +84,11 @@ These fields make routing more explicit and traceable:
 The GitHub Action should:
 
 1. inspect the event payload
-2. detect the relevant task or comment
+2. detect the relevant task, issue, pull request, label, or comment
 3. classify the request as observe, review, or act
 4. emit a routing report
 5. optionally post the routing comment, publish durable inbox markers, and write a thread snapshot as the trigger surface
+6. optionally run on a short schedule so ready tasks get polled even when no new GitHub event arrives
 
 ## Recommended upgrades
 

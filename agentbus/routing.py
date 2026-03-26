@@ -19,6 +19,8 @@ class RoutingSurface(str, Enum):
     inbox_marker = "inbox_marker"
     issue_comment = "issue_comment"
     pull_request_review = "pull_request_review"
+    issues = "issues"
+    pull_request = "pull_request"
     push = "push"
     manual = "manual"
 
@@ -134,7 +136,7 @@ def route_labels(
     seen_handles: set[str] | None = None,
 ) -> list[RoutingDecision]:
     active_registry = registry or default_registry()
-    active_seen = seen_handles or set()
+    active_seen = seen_handles if seen_handles is not None else set()
     decisions: list[RoutingDecision] = []
 
     for label in labels:
@@ -217,11 +219,18 @@ def route_event(
     decisions: list[RoutingDecision] = []
     context_notes: list[dict[str, Any]] = []
 
-    if event_name in {"issue_comment", "pull_request_review"}:
-        body = _extract_comment_body(event_name, payload)
-        source_ref = _extract_comment_ref(event_name, payload)
+    if event_name in {"issue_comment", "pull_request_review", "issues", "pull_request"}:
+        body = _extract_event_text(event_name, payload)
+        source_ref = _extract_event_ref(event_name, payload)
         trace_id = _extract_trace_id(payload)
-        surface = RoutingSurface.issue_comment if event_name == "issue_comment" else RoutingSurface.pull_request_review
+        if event_name == "issue_comment":
+            surface = RoutingSurface.issue_comment
+        elif event_name == "pull_request_review":
+            surface = RoutingSurface.pull_request_review
+        elif event_name == "issues":
+            surface = RoutingSurface.issues
+        else:
+            surface = RoutingSurface.pull_request
         explicit_mode = _extract_mode(body)
         comment_decisions = route_comment(body, registry=registry, source_ref=source_ref, trace_id=trace_id, surface=surface)
         decisions.extend(comment_decisions)
@@ -400,6 +409,34 @@ def _extract_comment_body(event_name: str, payload: dict[str, Any]) -> str:
     return ""
 
 
+def _extract_event_text(event_name: str, payload: dict[str, Any]) -> str:
+    if event_name in {"issue_comment", "pull_request_review"}:
+        return _extract_comment_body(event_name, payload)
+    if event_name == "issues":
+        issue = payload.get("issue", {})
+        if isinstance(issue, dict):
+            return _combine_text(issue.get("title", ""), issue.get("body", ""))
+    if event_name == "pull_request":
+        pull_request = payload.get("pull_request", {})
+        if isinstance(pull_request, dict):
+            return _combine_text(pull_request.get("title", ""), pull_request.get("body", ""))
+    return ""
+
+
+def _extract_event_ref(event_name: str, payload: dict[str, Any]) -> str:
+    if event_name in {"issue_comment", "issues"}:
+        issue = payload.get("issue", {})
+        if isinstance(issue, dict):
+            number = issue.get("number")
+            return f"issue#{number}" if number is not None else ""
+    if event_name in {"pull_request_review", "pull_request"}:
+        pull_request = payload.get("pull_request", {})
+        if isinstance(pull_request, dict):
+            number = pull_request.get("number")
+            return f"pr#{number}" if number is not None else ""
+    return ""
+
+
 def _extract_labels(payload: dict[str, Any]) -> list[str]:
     raw_labels: list[Any] = []
     issue = payload.get("issue", {})
@@ -458,7 +495,29 @@ def _extract_comment_ref(event_name: str, payload: dict[str, Any]) -> str:
 
 
 def _extract_trace_id(payload: dict[str, Any]) -> str:
-    return str(payload.get("trace_id", "") or payload.get("comment", {}).get("node_id", "") or "")
+    issue = payload.get("issue", {})
+    pull_request = payload.get("pull_request", {})
+    comment = payload.get("comment", {})
+    review = payload.get("review", {})
+    trace_id = (
+        payload.get("trace_id", "")
+        or (comment.get("node_id", "") if isinstance(comment, dict) else "")
+        or (review.get("node_id", "") if isinstance(review, dict) else "")
+        or (issue.get("node_id", "") if isinstance(issue, dict) else "")
+        or (pull_request.get("node_id", "") if isinstance(pull_request, dict) else "")
+    )
+    if trace_id:
+        return str(trace_id)
+    if isinstance(issue, dict) and issue.get("number") is not None:
+        return f"issue#{issue.get('number')}"
+    if isinstance(pull_request, dict) and pull_request.get("number") is not None:
+        return f"pr#{pull_request.get('number')}"
+    return ""
+
+
+def _combine_text(*parts: Any) -> str:
+    values = [str(part).strip() for part in parts if str(part).strip()]
+    return "\n\n".join(values)
 
 
 def _extract_changed_paths(payload: dict[str, Any]) -> list[str]:
