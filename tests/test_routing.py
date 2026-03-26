@@ -163,6 +163,63 @@ def test_route_event_routes_labels(tmp_path: Path) -> None:
     assert any(decision.target_agent == "codex" for decision in report.decisions)
 
 
+def test_route_event_routes_issue_labels_for_openclaw(tmp_path: Path) -> None:
+    repo = AgentBusRepo(root=tmp_path)
+    payload = {
+        "action": "labeled",
+        "trace_id": "TRACE-ISSUE-OPENCLAW-44",
+        "issue": {
+            "number": 44,
+            "title": "Need OpenClaw input",
+            "body": "Please inspect the browser relay path.",
+            "labels": [{"name": "needs-openclaw"}, {"name": "triage"}],
+        },
+    }
+
+    report = route_event(repo, event_name="issues", event_payload=payload, emit_inbox_markers=True, emit_thread_markers=True)
+
+    assert any(decision.target_agent == "openclaw" for decision in report.decisions)
+    assert any(decision.surface == "issues" for decision in report.decisions)
+    assert report.comment_body
+    assert "@openclaw" in report.comment_body
+    assert report.inbox_markers
+    assert report.thread_snapshots
+
+    inbox_files = list((tmp_path / "agent_bus" / "inbox" / "openclaw").glob("INBOX-*.md"))
+    assert len(inbox_files) == 1
+    inbox = load_inbox(inbox_files[0])
+    assert inbox.to_agent == "openclaw"
+    assert inbox.trace_id == "TRACE-ISSUE-OPENCLAW-44"
+    assert inbox.source_ref == "issue#44"
+
+    thread_files = list((tmp_path / "agent_bus" / "results" / "_routing" / "threads").glob("THREAD-*.md"))
+    assert len(thread_files) == 1
+    thread_text = thread_files[0].read_text(encoding="utf-8")
+    assert "issues" in thread_text
+    assert "@openclaw" in thread_text
+
+
+def test_route_event_routes_pull_request_labels_for_codex(tmp_path: Path) -> None:
+    repo = AgentBusRepo(root=tmp_path)
+    payload = {
+        "action": "labeled",
+        "trace_id": "TRACE-PR-CODEX-45",
+        "pull_request": {
+            "number": 45,
+            "title": "Codex review needed",
+            "body": "Please inspect the route workflow.",
+            "labels": [{"name": "needs-codex"}, {"name": "qa"}],
+        },
+    }
+
+    report = route_event(repo, event_name="pull_request", event_payload=payload)
+
+    assert any(decision.target_agent == "codex" for decision in report.decisions)
+    assert any(decision.surface == "pull_request" for decision in report.decisions)
+    assert report.comment_body
+    assert "@codex" in report.comment_body
+
+
 def test_route_event_writes_inbox_markers_for_issue_comments(tmp_path: Path) -> None:
     repo = AgentBusRepo(root=tmp_path)
     payload = {
